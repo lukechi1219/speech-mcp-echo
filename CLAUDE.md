@@ -188,20 +188,34 @@ The adapter supports three methods (auto-detected in order):
 # Activate venv first
 source .venv/bin/activate
 
-# Test TTS
+# Full voice flow test (recommended)
+python tests/test_full_voice_flow.py --skip-stt --lang en  # English, no mic
+python tests/test_full_voice_flow.py --skip-stt --lang zh  # Chinese, no mic
+python tests/test_full_voice_flow.py --lang en             # With microphone
+
+# Individual component tests:
+
+# Test TTS only
 python -c "
 from speech_mcp_echo.tts_adapters.google_tts_adapter import GoogleCloudTTS
 tts = GoogleCloudTTS(language='en-GB')
 tts.speak('Hello, this is a test.')
 "
 
-# Test STT (requires microphone)
+# Test STT only (requires microphone)
 python -c "
 from speech_mcp_echo.stt_adapters.faster_whisper_adapter import FasterWhisperSTT
 stt = FasterWhisperSTT()
 print('Listening...')
 text = stt.listen()
 print(f'You said: {text}')
+"
+
+# Test summarizer only
+python -c "
+from speech_mcp_echo.summarizer.local_summarizer import LocalSummarizer
+s = LocalSummarizer(personality='jarvis', language='en')
+print(s.summarize('Successfully created 5 files in the src directory.'))
 "
 ```
 

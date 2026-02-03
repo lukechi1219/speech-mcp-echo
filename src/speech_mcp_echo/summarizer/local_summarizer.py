@@ -130,8 +130,14 @@ class LocalSummarizer(BaseSummarizer):
         """Detect the type of content for appropriate summarization."""
         text_lower = text.lower()
 
-        # Error detection
-        if any(word in text_lower for word in ["error", "failed", "exception", "錯誤", "失敗"]):
+        # Error detection - but exclude mentions of error handling as a feature
+        error_indicators = ["error:", "failed", "exception", "錯誤：", "失敗"]
+        feature_context = ["error handling", "錯誤處理", "handle error", "catch error"]
+
+        has_error = any(word in text_lower for word in error_indicators)
+        is_feature_mention = any(ctx in text_lower for ctx in feature_context)
+
+        if has_error and not is_feature_mention:
             return "error"
 
         # Code-related
