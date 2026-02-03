@@ -30,8 +30,49 @@ We chose **Google Cloud TTS** as the primary TTS engine because:
 - **No heavy dependencies**: Unlike Kokoro which requires PyTorch (~2GB), Google Cloud TTS uses a simple REST API
 - **High quality**: Neural voices with natural prosody
 - **Multilingual**: Excellent support for English, Chinese (Traditional/Simplified), and 40+ languages
-- **Easy auth**: Uses existing `gcloud` CLI authentication - no separate API key management
+- **Flexible auth**: Multiple authentication methods (see below)
 - **Cost-effective**: Free tier includes 4 million characters/month
+- **Cross-platform**: Works on macOS, Linux, and Windows
+
+#### Google Cloud TTS Authentication Options
+
+Choose the method that works best for your setup:
+
+**Option A: gcloud CLI (Recommended for developers)**
+```bash
+# Install gcloud CLI
+brew install google-cloud-sdk  # macOS
+# or: https://cloud.google.com/sdk/docs/install
+
+# Login and configure
+gcloud auth login
+gcloud config set project YOUR_PROJECT_ID
+```
+
+**Option B: Service Account (Recommended for servers/production)**
+```bash
+# 1. Create service account in Google Cloud Console
+#    - Go to IAM & Admin > Service Accounts
+#    - Create account with "Cloud Text-to-Speech API User" role
+#    - Download JSON key file
+
+# 2. Set environment variable
+export GOOGLE_APPLICATION_CREDENTIALS="/path/to/service-account-key.json"
+
+# 3. Optionally set project ID (if not in key file)
+export GOOGLE_CLOUD_PROJECT="your-project-id"
+```
+
+**Option C: Python Client Library**
+```bash
+# Install the library
+pip install google-cloud-texttospeech
+
+# Then use Option A or B for authentication
+# The library will auto-detect credentials
+```
+
+The adapter automatically tries these methods in order and uses the first one that works.
 
 #### Why Not Kokoro?
 
