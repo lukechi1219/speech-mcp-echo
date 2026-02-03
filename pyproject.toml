@@ -10,7 +10,7 @@ readme = "README.md"
 license = "MIT"
 requires-python = ">=3.10"
 authors = [
-    { name = "Your Name", email = "your@email.com" }
+    { name = "Luke Chi" }
 ]
 keywords = ["voice", "speech", "tts", "stt", "claude", "gemini", "codex", "mcp"]
 classifiers = [
@@ -23,6 +23,7 @@ classifiers = [
     "Programming Language :: Python :: 3.12",
 ]
 
+# Core dependencies - lightweight, no heavy ML frameworks
 dependencies = [
     "pyaudio>=0.2.13",
     "numpy>=1.24.0",
@@ -31,27 +32,52 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-# Local STT with faster-whisper
+# Local STT with faster-whisper (recommended - lightweight)
 local-stt = [
     "faster-whisper>=0.10.0",
+    "numba>=0.57.0",
 ]
 
-# Local TTS with Kokoro
-local-tts = [
-    "kokoro>=0.3.0",
+# Local TTS with pyttsx3 (system voices, no heavy deps)
+local-tts-light = [
     "pyttsx3>=2.90",
 ]
 
-# Cloud services
-cloud = [
+# Local TTS with Kokoro (WARNING: requires PyTorch ~2GB)
+local-tts-kokoro = [
+    "torch",
+    "kokoro>=0.8.4",
+    "pyttsx3>=2.90",
+    "misaki[en]",
+]
+
+# Kokoro with Chinese support
+local-tts-kokoro-zh = [
+    "speech-mcp-echo[local-tts-kokoro]",
+    "misaki[zh]",
+]
+
+# Kokoro with Japanese support
+local-tts-kokoro-ja = [
+    "speech-mcp-echo[local-tts-kokoro]",
+    "misaki[ja]",
+]
+
+# Cloud services (OpenAI API)
+cloud-openai = [
     "openai>=1.0.0",
+]
+
+# Cloud services (Google Cloud) - optional, gcloud CLI works without these
+cloud-google = [
     "google-cloud-speech>=2.21.0",
     "google-cloud-texttospeech>=2.14.0",
 ]
 
 # MCP support
 mcp = [
-    "mcp>=0.1.0",
+    "mcp[cli]>=1.2.0",
+    "pydantic>=2.7.2,<3.0.0",
 ]
 
 # UI
@@ -67,9 +93,14 @@ dev = [
     "ruff>=0.1.0",
 ]
 
-# All optional dependencies
+# Recommended: Everything except heavy Kokoro/PyTorch
+recommended = [
+    "speech-mcp-echo[local-stt,local-tts-light,mcp,ui]",
+]
+
+# All optional dependencies (WARNING: includes PyTorch ~2GB)
 all = [
-    "speech-mcp-echo[local-stt,local-tts,cloud,mcp,ui,dev]",
+    "speech-mcp-echo[local-stt,local-tts-kokoro,cloud-openai,cloud-google,mcp,ui,dev]",
 ]
 
 [project.scripts]
