@@ -6,31 +6,106 @@ Voice interface for multiple AI CLIs - Claude Code, Gemini CLI, Codex CLI, and M
 
 - **Multi-CLI Support**: Works with Claude Code, Gemini CLI, Codex CLI, and any MCP-compatible tool
 - **Configurable STT**: Local (faster-whisper) or cloud (OpenAI Whisper, Google Speech)
-- **Configurable TTS**: Local (Kokoro) or cloud (Google Cloud TTS, OpenAI TTS)
+- **Configurable TTS**: Local (pyttsx3) or cloud (Google Cloud TTS, OpenAI TTS)
+- **Bilingual Support**: English and Chinese (Traditional/Simplified) text processing
 - **JARVIS Summarizer**: Condenses long responses into concise, entertaining summaries
 - **PyQt5 UI**: Audio visualization and status display (coming soon)
 
+## Why These Technology Choices?
+
+### STT: faster-whisper (Recommended)
+
+We chose **faster-whisper** as the primary STT engine because:
+
+- **Lightweight**: ~150MB vs ~1.5GB for OpenAI's original whisper
+- **Fast**: 4x faster than original whisper using CTranslate2 optimization
+- **Offline**: Works completely offline, no API costs
+- **Accurate**: Same accuracy as OpenAI Whisper (it uses the same models)
+- **CPU-friendly**: Runs well on CPU with int8 quantization
+
+### TTS: Google Cloud TTS (Recommended)
+
+We chose **Google Cloud TTS** as the primary TTS engine because:
+
+- **No heavy dependencies**: Unlike Kokoro which requires PyTorch (~2GB), Google Cloud TTS uses a simple REST API
+- **High quality**: Neural voices with natural prosody
+- **Multilingual**: Excellent support for English, Chinese (Traditional/Simplified), and 40+ languages
+- **Easy auth**: Uses existing `gcloud` CLI authentication - no separate API key management
+- **Cost-effective**: Free tier includes 4 million characters/month
+
+#### Why Not Kokoro?
+
+Kokoro is an excellent local TTS engine, but it requires:
+- PyTorch (~2GB download)
+- CUDA for optimal performance
+- Additional language models (misaki)
+
+For most users, Google Cloud TTS provides better quality with simpler setup. Kokoro remains available as an optional local alternative for users who prefer fully offline operation.
+
 ## Installation
-
-```bash
-# Basic installation
-pip install speech-mcp-echo
-
-# With local STT/TTS
-pip install speech-mcp-echo[local-stt,local-tts]
-
-# With cloud services
-pip install speech-mcp-echo[cloud]
-
-# Everything
-pip install speech-mcp-echo[all]
-```
 
 ### Prerequisites
 
-- Python 3.10+
-- PortAudio: `brew install portaudio` (macOS)
-- For Google Cloud TTS: `gcloud` CLI configured with a project
+```bash
+# macOS - Install PortAudio for audio capture
+brew install portaudio
+
+# For Google Cloud TTS - Install and configure gcloud CLI
+brew install google-cloud-sdk
+gcloud auth login
+gcloud config set project YOUR_PROJECT_ID
+```
+
+### Recommended Installation
+
+We recommend installing **without** Kokoro/PyTorch to keep the installation lightweight:
+
+```bash
+# Clone the repository
+git clone https://github.com/lukechi1219/speech-mcp-echo.git
+cd speech-mcp-echo
+
+# Install core dependencies (recommended)
+pip install -e .
+
+# Or install specific features
+pip install -e ".[local-stt]"  # Add faster-whisper
+pip install -e ".[cloud]"      # Add cloud API clients
+pip install -e ".[ui]"         # Add PyQt5 UI
+```
+
+### Manual Installation (Core packages only)
+
+```bash
+# Essential packages
+pip install pyaudio numpy soundfile psutil
+
+# STT: faster-whisper (recommended)
+pip install faster-whisper numba
+
+# MCP support
+pip install "mcp[cli]>=1.2.0" "pydantic>=2.7.2,<3.0.0"
+
+# Optional: PyQt5 UI
+pip install PyQt5
+
+# Optional: Cloud API clients (if using OpenAI services)
+pip install openai
+```
+
+### Optional: Local TTS with Kokoro
+
+Only install if you need fully offline TTS:
+
+```bash
+# Warning: This downloads ~2GB of PyTorch
+pip install torch kokoro pyttsx3
+
+# Language support
+pip install "misaki[en]"  # English
+pip install "misaki[zh]"  # Chinese
+pip install "misaki[ja]"  # Japanese
+```
 
 ## Quick Start
 
@@ -78,7 +153,8 @@ Configuration is stored at `~/.config/speech-mcp-echo/config.json`:
   "stt": {
     "engine": "faster-whisper",
     "model": "base",
-    "device": "cpu"
+    "device": "cpu",
+    "compute_type": "int8"
   },
   "tts": {
     "engine": "google",
@@ -93,12 +169,21 @@ Configuration is stored at `~/.config/speech-mcp-echo/config.json`:
 }
 ```
 
+### Supported Languages
+
+| Language | STT (faster-whisper) | TTS (Google Cloud) |
+|----------|---------------------|-------------------|
+| English | ✅ | ✅ en-US, en-GB |
+| Chinese (Traditional) | ✅ | ✅ cmn-TW |
+| Chinese (Simplified) | ✅ | ✅ cmn-CN |
+| Japanese | ✅ | ✅ ja-JP |
+
 ### Environment Variables
 
 API keys are read from environment variables:
 
 - `OPENAI_API_KEY` - For OpenAI Whisper STT and TTS
-- `GOOGLE_APPLICATION_CREDENTIALS` - For Google Cloud services
+- `GOOGLE_APPLICATION_CREDENTIALS` - For Google Cloud services (optional if using gcloud CLI)
 - `ANTHROPIC_API_KEY` - For Claude-based summarization
 
 ## Architecture
@@ -133,7 +218,7 @@ speech_mcp_echo/
 # Clone and install in development mode
 git clone https://github.com/lukechi1219/speech-mcp-echo.git
 cd speech-mcp-echo
-pip install -e .[all]
+pip install -e ".[dev]"
 
 # Run tests
 pytest tests/
