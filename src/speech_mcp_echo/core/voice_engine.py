@@ -1,0 +1,261 @@
+"""
+VoiceEngine - Protocol-agnostic core voice functionality.
+
+Handles STT, TTS, and summarization without being tied to any specific CLI protocol.
+"""
+
+import logging
+from typing import Optional, Callable
+
+from speech_mcp_echo.config import load_config, get_setting
+
+logger = logging.getLogger(__name__)
+
+
+class VoiceEngine:
+    """
+    Core voice engine that provides STT, TTS, and summarization.
+
+    This class is protocol-agnostic and can be used by any CLI adapter.
+    """
+
+    def __init__(
+        self,
+        adapter: str = "auto",
+        config_path: Optional[str] = None,
+    ):
+        """
+        Initialize the voice engine.
+
+        Args:
+            adapter: CLI adapter to use (auto, mcp, claude-code, gemini, codex)
+            config_path: Optional path to configuration file
+        """
+        self.config = load_config()
+        self.adapter_name = adapter
+
+        # Lazy-loaded components
+        self._stt_engine = None
+        self._tts_engine = None
+        self._summarizer = None
+        self._protocol_adapter = None
+
+        # Callbacks for state changes
+        self._on_listening_start: Optional[Callable] = None
+        self._on_listening_end: Optional[Callable] = None
+        self._on_speaking_start: Optional[Callable] = None
+        self._on_speaking_end: Optional[Callable] = None
+
+        logger.info(f"VoiceEngine initialized with adapter: {adapter}")
+
+    @property
+    def stt_engine(self):
+        """Lazy-load STT engine based on configuration."""
+        if self._stt_engine is None:
+            self._stt_engine = self._create_stt_engine()
+        return self._stt_engine
+
+    @property
+    def tts_engine(self):
+        """Lazy-load TTS engine based on configuration."""
+        if self._tts_engine is None:
+            self._tts_engine = self._create_tts_engine()
+        return self._tts_engine
+
+    @property
+    def summarizer(self):
+        """Lazy-load summarizer based on configuration."""
+        if self._summarizer is None:
+            self._summarizer = self._create_summarizer()
+        return self._summarizer
+
+    def _create_stt_engine(self):
+        """Create STT engine based on configuration."""
+        engine_name = get_setting("stt", "engine", "faster-whisper")
+        logger.info(f"Creating STT engine: {engine_name}")
+
+        if engine_name == "faster-whisper":
+            from speech_mcp_echo.stt_adapters.faster_whisper_adapter import FasterWhisperSTT
+            return FasterWhisperSTT(
+                model=get_setting("stt", "model", "base"),
+                device=get_setting("stt", "device", "cpu"),
+                compute_type=get_setting("stt", "compute_type", "int8"),
+            )
+        elif engine_name == "openai":
+            from speech_mcp_echo.stt_adapters.openai_whisper_adapter import OpenAIWhisperSTT
+            return OpenAIWhisperSTT()
+        elif engine_name == "google":
+            from speech_mcp_echo.stt_adapters.google_speech_adapter import GoogleSpeechSTT
+            return GoogleSpeechSTT()
+        else:
+            raise ValueError(f"Unknown STT engine: {engine_name}")
+
+    def _create_tts_engine(self):
+        """Create TTS engine based on configuration."""
+        engine_name = get_setting("tts", "engine", "google")
+        logger.info(f"Creating TTS engine: {engine_name}")
+
+        if engine_name == "google":
+            from speech_mcp_echo.tts_adapters.google_tts_adapter import GoogleCloudTTS
+            return GoogleCloudTTS(
+                voice=get_setting("tts", "voice", "cmn-TW-Standard-B"),
+                language=get_setting("tts", "language", "cmn-TW"),
+            )
+        elif engine_name == "kokoro":
+            from speech_mcp_echo.tts_adapters.kokoro_adapter import KokoroTTS
+            return KokoroTTS(
+                voice=get_setting("tts", "voice", "af_heart"),
+            )
+        elif engine_name == "openai":
+            from speech_mcp_echo.tts_adapters.openai_tts_adapter import OpenAITTS
+            return OpenAITTS(
+                voice=get_setting("tts", "voice", "alloy"),
+            )
+        elif engine_name == "pyttsx3":
+            from speech_mcp_echo.tts_adapters.pyttsx3_adapter import Pyttsx3TTS
+            return Pyttsx3TTS()
+        else:
+            raise ValueError(f"Unknown TTS engine: {engine_name}")
+
+    def _create_summarizer(self):
+        """Create summarizer based on configuration."""
+        if not get_setting("summarizer", "enabled", True):
+            return None
+
+        engine_name = get_setting("summarizer", "engine", "local")
+        logger.info(f"Creating summarizer: {engine_name}")
+
+        if engine_name == "local":
+            from speech_mcp_echo.summarizer.local_summarizer import LocalSummarizer
+            return LocalSummarizer(
+                max_input_length=get_setting("summarizer", "max_input_length", 500),
+                target_length=get_setting("summarizer", "target_length", 150),
+                personality=get_setting("summarizer", "personality", "jarvis"),
+                language=get_setting("summarizer", "language", "en"),
+            )
+        elif engine_name == "llm":
+            from speech_mcp_echo.summarizer.llm_summarizer import LLMSummarizer
+            return LLMSummarizer(
+                personality=get_setting("summarizer", "personality", "jarvis"),
+                language=get_setting("summarizer", "language", "en"),
+            )
+        else:
+            return None
+
+    def listen(self) -> str:
+        """
+        Listen for speech and return transcription.
+
+        Returns:
+            Transcribed text from speech
+        """
+        if self._on_listening_start:
+            self._on_listening_start()
+
+        try:
+            transcription = self.stt_engine.listen()
+            logger.info(f"Transcription: {transcription[:50]}...")
+            return transcription
+        finally:
+            if self._on_listening_end:
+                self._on_listening_end()
+
+    def speak(self, text: str, summarize: bool = True) -> str:
+        """
+        Speak text using TTS, optionally summarizing first.
+
+        Args:
+            text: Text to speak
+            summarize: Whether to summarize long text first
+
+        Returns:
+            The text that was actually spoken (may be summarized)
+        """
+        if self._on_speaking_start:
+            self._on_speaking_start()
+
+        try:
+            # Summarize if enabled and text is long
+            spoken_text = text
+            if summarize and self.summarizer:
+                if self.summarizer.should_summarize(text):
+                    spoken_text = self.summarizer.summarize(text)
+                    logger.info(f"Summarized text from {len(text)} to {len(spoken_text)} chars")
+
+            # Speak the text
+            self.tts_engine.speak(spoken_text)
+            return spoken_text
+        finally:
+            if self._on_speaking_end:
+                self._on_speaking_end()
+
+    def set_callbacks(
+        self,
+        on_listening_start: Optional[Callable] = None,
+        on_listening_end: Optional[Callable] = None,
+        on_speaking_start: Optional[Callable] = None,
+        on_speaking_end: Optional[Callable] = None,
+    ):
+        """Set callbacks for state changes (useful for UI updates)."""
+        self._on_listening_start = on_listening_start
+        self._on_listening_end = on_listening_end
+        self._on_speaking_start = on_speaking_start
+        self._on_speaking_end = on_speaking_end
+
+    def run(self):
+        """
+        Run the voice engine with the configured adapter.
+
+        This is the main entry point when running as a standalone service.
+        """
+        adapter = self._get_adapter()
+        adapter.run(self)
+
+    def _get_adapter(self):
+        """Get the appropriate protocol adapter."""
+        if self._protocol_adapter is not None:
+            return self._protocol_adapter
+
+        adapter_name = self.adapter_name
+        if adapter_name == "auto":
+            adapter_name = self._detect_adapter()
+
+        logger.info(f"Using adapter: {adapter_name}")
+
+        if adapter_name == "mcp":
+            from speech_mcp_echo.adapters.mcp_adapter import MCPAdapter
+            self._protocol_adapter = MCPAdapter()
+        elif adapter_name == "claude-code":
+            from speech_mcp_echo.adapters.claude_code_adapter import ClaudeCodeAdapter
+            self._protocol_adapter = ClaudeCodeAdapter()
+        elif adapter_name == "gemini":
+            from speech_mcp_echo.adapters.gemini_adapter import GeminiAdapter
+            self._protocol_adapter = GeminiAdapter()
+        elif adapter_name == "codex":
+            from speech_mcp_echo.adapters.codex_adapter import CodexAdapter
+            self._protocol_adapter = CodexAdapter()
+        else:
+            # Default to MCP for now
+            from speech_mcp_echo.adapters.mcp_adapter import MCPAdapter
+            self._protocol_adapter = MCPAdapter()
+
+        return self._protocol_adapter
+
+    def _detect_adapter(self) -> str:
+        """Auto-detect which CLI adapter to use based on environment."""
+        import os
+
+        # Check for Claude Code indicators
+        if os.environ.get("CLAUDE_CODE"):
+            return "claude-code"
+
+        # Check for Gemini CLI indicators
+        if os.environ.get("GEMINI_CLI"):
+            return "gemini"
+
+        # Check for Codex CLI indicators
+        if os.environ.get("CODEX_CLI"):
+            return "codex"
+
+        # Default to MCP
+        return "mcp"

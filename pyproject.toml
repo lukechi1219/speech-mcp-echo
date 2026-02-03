@@ -1,0 +1,101 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "speech-mcp-echo"
+version = "0.1.0"
+description = "Voice interface for multiple AI CLIs - Claude Code, Gemini, Codex and more"
+readme = "README.md"
+license = "MIT"
+requires-python = ">=3.10"
+authors = [
+    { name = "Your Name", email = "your@email.com" }
+]
+keywords = ["voice", "speech", "tts", "stt", "claude", "gemini", "codex", "mcp"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+]
+
+dependencies = [
+    "pyaudio>=0.2.13",
+    "numpy>=1.24.0",
+    "soundfile>=0.12.0",
+    "psutil>=5.9.0",
+]
+
+[project.optional-dependencies]
+# Local STT with faster-whisper
+local-stt = [
+    "faster-whisper>=0.10.0",
+]
+
+# Local TTS with Kokoro
+local-tts = [
+    "kokoro>=0.3.0",
+    "pyttsx3>=2.90",
+]
+
+# Cloud services
+cloud = [
+    "openai>=1.0.0",
+    "google-cloud-speech>=2.21.0",
+    "google-cloud-texttospeech>=2.14.0",
+]
+
+# MCP support
+mcp = [
+    "mcp>=0.1.0",
+]
+
+# UI
+ui = [
+    "PyQt5>=5.15.0",
+]
+
+# Development
+dev = [
+    "pytest>=7.0.0",
+    "pytest-asyncio>=0.21.0",
+    "black>=23.0.0",
+    "ruff>=0.1.0",
+]
+
+# All optional dependencies
+all = [
+    "speech-mcp-echo[local-stt,local-tts,cloud,mcp,ui,dev]",
+]
+
+[project.scripts]
+speech-mcp-echo = "speech_mcp_echo:main"
+
+[project.urls]
+Homepage = "https://github.com/lukechi1219/speech-mcp-echo"
+Repository = "https://github.com/lukechi1219/speech-mcp-echo.git"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/speech_mcp_echo"]
+
+[tool.hatch.build.targets.sdist]
+include = [
+    "/src",
+    "/tests",
+    "/README.md",
+    "/LICENSE",
+]
+
+[tool.black]
+line-length = 100
+target-version = ["py310"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py310"
+select = ["E", "F", "W", "I", "N", "UP", "B", "C4"]
+ignore = ["E501"]
