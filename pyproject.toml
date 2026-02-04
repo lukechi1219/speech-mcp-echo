@@ -110,6 +110,12 @@ speech-mcp-echo = "speech_mcp_echo:main"
 Homepage = "https://github.com/lukechi1219/speech-mcp-echo"
 Repository = "https://github.com/lukechi1219/speech-mcp-echo.git"
 
+[tool.hatch.build]
+include = [
+    "src/**/*.py",
+    "src/**/resources/**/*",
+]
+
 [tool.hatch.build.targets.wheel]
 packages = ["src/speech_mcp_echo"]
 

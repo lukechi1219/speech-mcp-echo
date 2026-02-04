@@ -368,7 +368,68 @@ class AudioProcessor:
         
         # Get the recorded audio file path
         return self.get_recorded_audio_path()
-    
+
+    def record_until_silence(self, timeout: Optional[int] = None) -> Optional[str]:
+        """
+        Record audio until silence is detected or timeout occurs.
+
+        This is a blocking method that:
+        1. Plays start listening notification sound
+        2. Records audio until silence is detected
+        3. Plays stop listening notification sound
+        4. Returns the path to the recorded audio file
+
+        Args:
+            timeout: Maximum seconds to wait for audio (None = wait indefinitely)
+
+        Returns:
+            str: Path to the recorded audio file, or None if timeout/error
+        """
+        import threading
+        import queue
+
+        result_queue: queue.Queue[Optional[str]] = queue.Queue()
+
+        def _recording_thread():
+            """Thread that handles the recording with silence detection."""
+            try:
+                # Start listening with silence detection (streaming_mode=False)
+                if not self.start_listening(streaming_mode=False):
+                    result_queue.put(None)
+                    return
+
+                # Wait for silence detection to stop recording
+                while self.is_listening:
+                    time.sleep(0.1)
+
+                # Get the recorded audio file path
+                audio_path = self.get_recorded_audio_path()
+                result_queue.put(audio_path)
+
+            except Exception as e:
+                logger.error(f"Recording thread error: {e}")
+                self.stop_listening()
+                result_queue.put(None)
+
+        # Start recording thread
+        thread = threading.Thread(target=_recording_thread, daemon=True)
+        thread.start()
+
+        # Wait with timeout
+        thread.join(timeout=timeout)
+
+        # Check if timeout occurred
+        if thread.is_alive():
+            logger.warning(f"Audio recording timeout after {timeout}s")
+            self.stop_listening()
+            return None
+
+        # Get result
+        if not result_queue.empty():
+            return result_queue.get()
+
+        return None
+
     def play_audio_file(self, file_path: str) -> bool:
         """
         Play an audio file using PyAudio.

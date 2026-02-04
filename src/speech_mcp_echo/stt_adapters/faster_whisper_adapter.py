@@ -2,25 +2,16 @@
 Faster-Whisper STT adapter.
 
 Uses faster-whisper for local speech-to-text transcription.
+Audio recording is delegated to AudioProcessor for consistent behavior
+(including audio cue playback).
 """
 
 import logging
-import queue
-import tempfile
-import threading
-import time
 from typing import Callable, Optional
 
 from speech_mcp_echo.stt_adapters import BaseSTTAdapter
 
 logger = logging.getLogger(__name__)
-
-# Audio parameters for recording
-SAMPLE_RATE = 16000
-CHANNELS = 1
-CHUNK_SIZE = 1024
-SILENCE_THRESHOLD = 0.015  # RMS amplitude threshold (lower = more tolerant of quiet sounds)
-MAX_SILENCE_DURATION = 5.0  # seconds of silence before stopping (longer = more pause time)
 
 
 class FasterWhisperSTT(BaseSTTAdapter):
@@ -28,6 +19,7 @@ class FasterWhisperSTT(BaseSTTAdapter):
     Faster-Whisper local STT adapter.
 
     Uses faster-whisper for efficient local transcription.
+    Audio recording is handled by AudioProcessor for consistent behavior.
     """
 
     def __init__(
@@ -51,9 +43,17 @@ class FasterWhisperSTT(BaseSTTAdapter):
         self.device = device
         self.compute_type = compute_type
         self._whisper_model = None
+        self._audio_processor = None
 
         # Lazy initialization
         self.is_initialized = False
+
+    def _get_audio_processor(self):
+        """Get or create the AudioProcessor instance."""
+        if self._audio_processor is None:
+            from speech_mcp_echo.audio_processor import AudioProcessor
+            self._audio_processor = AudioProcessor()
+        return self._audio_processor
 
     def _ensure_initialized(self):
         """Lazy initialize the whisper model."""
@@ -145,114 +145,25 @@ class FasterWhisperSTT(BaseSTTAdapter):
         """
         Record audio from microphone until silence detected.
 
+        Delegates to AudioProcessor for consistent behavior including:
+        - Audio cue playback (start/stop listening sounds)
+        - Device selection
+        - Silence detection
+
         Args:
             timeout: Maximum seconds to wait for audio (None = wait indefinitely)
 
         Returns:
             Path to temporary audio file, or None if timeout occurred
         """
-        import pyaudio
-        import numpy as np
-        import wave
-        import queue
+        logger.info(
+            f"Starting audio recording (timeout: {timeout}s)..."
+            if timeout
+            else "Starting audio recording..."
+        )
 
-        logger.info(f"Starting audio recording (timeout: {timeout}s)..." if timeout else "Starting audio recording...")
-
-        # Use queues for thread-safe communication
-        result_queue = queue.Queue()
-        exception_queue = queue.Queue()
-
-        def _recording_thread():
-            """Thread function that performs the actual recording."""
-            try:
-                audio = pyaudio.PyAudio()
-
-                # Open stream
-                stream = audio.open(
-                    format=pyaudio.paInt16,
-                    channels=CHANNELS,
-                    rate=SAMPLE_RATE,
-                    input=True,
-                    frames_per_buffer=CHUNK_SIZE,
-                )
-
-                frames = []
-                silence_start = None
-                has_speech = False
-
-                try:
-                    while True:
-                        # Read audio chunk (blocking call)
-                        data = stream.read(CHUNK_SIZE, exception_on_overflow=False)
-                        frames.append(data)
-
-                        # Convert to numpy for analysis
-                        audio_data = np.frombuffer(data, dtype=np.int16)
-                        audio_float = audio_data.astype(np.float32) / 32768.0
-
-                        # Calculate RMS amplitude
-                        rms = np.sqrt(np.mean(audio_float**2))
-
-                        # Detect speech/silence
-                        if rms > SILENCE_THRESHOLD:
-                            has_speech = True
-                            silence_start = None
-                        else:
-                            if has_speech and silence_start is None:
-                                silence_start = time.time()
-                            elif silence_start is not None:
-                                silence_duration = time.time() - silence_start
-                                if silence_duration >= MAX_SILENCE_DURATION:
-                                    logger.info("Silence detected, stopping recording")
-                                    break
-
-                finally:
-                    stream.stop_stream()
-                    stream.close()
-                    audio.terminate()
-
-                # Save to temporary file
-                with tempfile.NamedTemporaryFile(suffix=".wav", delete=False) as f:
-                    temp_path = f.name
-
-                with wave.open(temp_path, "wb") as wf:
-                    wf.setnchannels(CHANNELS)
-                    wf.setsampwidth(audio.get_sample_size(pyaudio.paInt16))
-                    wf.setframerate(SAMPLE_RATE)
-                    wf.writeframes(b"".join(frames))
-
-                logger.info(f"Audio saved to: {temp_path}")
-                result_queue.put(temp_path)
-
-            except Exception as e:
-                logger.error(f"Recording thread error: {e}")
-                exception_queue.put(e)
-
-        # Start recording thread
-        thread = threading.Thread(target=_recording_thread, daemon=True)
-        thread.start()
-
-        # Wait with timeout
-        thread.join(timeout=timeout)
-
-        # Check if timeout occurred
-        if thread.is_alive():
-            logger.warning(f"Audio recording timeout after {timeout}s")
-            # Note: Thread continues running but we return None
-            # The daemon thread will be cleaned up when process exits
-            return None
-
-        # Check for exceptions
-        if not exception_queue.empty():
-            raise exception_queue.get()
-
-        # Get result
-        if not result_queue.empty():
-            return result_queue.get()
-
-        # Should not reach here, but handle gracefully
-        logger.warning("Recording completed but no result available")
-        return None
+        audio_processor = self._get_audio_processor()
+        return audio_processor.record_until_silence(timeout=timeout)
 
     def transcribe_stream(
         self,
