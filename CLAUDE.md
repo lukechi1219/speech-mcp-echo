@@ -48,7 +48,12 @@ source .venv/bin/activate
 # Prerequisites
 brew install portaudio
 
-# Create venv and install
+# Create venv and install with uv (recommended - 4x faster than pip)
+uv venv .venv --python 3.13
+source .venv/bin/activate
+uv pip install -e ".[recommended]"
+
+# Or with pip (slower)
 python3 -m venv .venv
 source .venv/bin/activate
 pip install -e ".[recommended]"
@@ -217,38 +222,80 @@ print(s.summarize('Successfully created 5 files in the src directory.'))
 
 ## CLI Integration
 
-### Claude Code
+### Quick Setup (Recommended)
+
+Use the setup script to configure any or all CLIs:
+
+```bash
+# Interactive menu
+./scripts/setup-cli.sh
+
+# Or configure specific CLI
+./scripts/setup-cli.sh --claude   # Claude Code
+./scripts/setup-cli.sh --gemini   # Gemini CLI
+./scripts/setup-cli.sh --codex    # Codex CLI
+./scripts/setup-cli.sh --all      # All CLIs
+
+# Check current status
+./scripts/setup-cli.sh --status
+```
+
+### Manual Configuration
+
+#### Claude Code
 Add to `~/.claude.json`:
 ```json
 {
   "mcpServers": {
-    "speech": {
+    "speech-mcp-echo": {
       "command": "speech-mcp-echo"
     }
   }
 }
 ```
 
-### Gemini CLI
+**Recommended: Auto-allow speech tools** to avoid confirmation prompts during voice conversations.
+
+Add to `~/.claude/settings.json` under `permissions.allow`:
+```json
+{
+  "permissions": {
+    "allow": [
+      "mcp__speech-mcp-echo__start_conversation",
+      "mcp__speech-mcp-echo__voice_listen",
+      "mcp__speech-mcp-echo__voice_speak",
+      "mcp__speech-mcp-echo__voice_reply",
+      "mcp__speech-mcp-echo__voice_config",
+      "mcp__speech-mcp-echo__voice_status"
+    ]
+  }
+}
+```
+
+Then restart Claude Code.
+
+#### Gemini CLI
 Add to `~/.gemini/settings.json`:
 ```json
 {
   "mcpServers": {
-    "speech": {
+    "speech-mcp-echo": {
       "command": "speech-mcp-echo"
     }
   }
 }
 ```
+Then restart Gemini CLI.
 
-### Codex CLI
+#### Codex CLI
 Add to `~/.codex/config.toml`:
 ```toml
-[mcp.servers.speech]
+[mcp.servers.speech-mcp-echo]
 command = "speech-mcp-echo"
 ```
+Then restart Codex CLI.
 
-### Goose CLI
+#### Goose CLI
 ```bash
 goose session --with-extension "speech-mcp-echo"
 ```
