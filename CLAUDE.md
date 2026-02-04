@@ -257,8 +257,30 @@ goose session --with-extension "speech-mcp-echo"
 
 | Tool | Description |
 |------|-------------|
+| `start_conversation` | Start a voice conversation (use when user says "let's talk") |
 | `voice_listen` | Listen for voice input and return transcription |
 | `voice_speak` | Speak text using TTS (with optional summarization) |
-| `voice_reply` | Speak text and optionally wait for voice response |
+| `voice_reply` | Speak text and listen for response (for ongoing conversations) |
 | `voice_config` | Configure STT, TTS, and summarizer settings |
 | `voice_status` | Get voice system status and detected CLI |
+
+## Voice Conversation Flow
+
+```
+User: "Let's have a voice conversation"
+                │
+                ▼
+AI calls: start_conversation()  ──► Returns user's first voice input
+                │
+                ▼
+AI processes, then calls: voice_reply("response", wait=True)
+                │
+                ├──► Speaks response
+                └──► Returns user's next voice input
+                │
+                ▼
+        [Repeat voice_reply() for continued conversation]
+                │
+                ▼
+AI calls: voice_reply("Goodbye!", wait=False)  ──► Ends conversation
+```

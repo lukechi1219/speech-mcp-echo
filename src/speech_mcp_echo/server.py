@@ -37,6 +37,39 @@ def get_engine() -> VoiceEngine:
 
 
 @mcp.tool()
+def start_conversation() -> str:
+    """
+    Start a voice conversation by listening for user speech.
+
+    Use this tool when the user wants to have a voice conversation, such as:
+    - "Let's talk using voice"
+    - "Can we have a voice conversation?"
+    - "I'd like to speak instead of typing"
+    - "Start voice mode"
+
+    This tool will:
+    1. Initialize the speech recognition system
+    2. Start listening for user voice input
+    3. Automatically stop when the user finishes speaking (silence detection)
+    4. Return the transcribed text
+
+    After receiving the user's voice input, use voice_reply() to respond
+    and continue the conversation.
+
+    Returns:
+        The transcription of the user's speech.
+    """
+    engine = get_engine()
+    logger.info("Starting voice conversation...")
+    try:
+        transcription = engine.listen()
+        return transcription
+    except Exception as e:
+        logger.error(f"Start conversation failed: {e}")
+        return f"ERROR: Failed to start conversation - {str(e)}"
+
+
+@mcp.tool()
 def voice_listen() -> str:
     """
     Listen for voice input and return the transcription.
@@ -87,16 +120,26 @@ def voice_reply(text: str, wait_for_response: bool = True) -> str:
     """
     Speak text and optionally wait for voice response.
 
-    This combines speak and listen into a single conversational turn.
-    Useful for interactive voice conversations.
+    Use this tool during voice conversations to:
+    1. Speak your response to the user (with automatic summarization)
+    2. Immediately listen for the user's next voice input
+
+    This creates natural turn-taking in voice conversations:
+    - AI speaks → User speaks → AI speaks → User speaks...
+
+    Typical workflow:
+    1. User says "Let's talk" → Use start_conversation() to get first input
+    2. AI processes → Use voice_reply("response", wait=True) to respond and listen
+    3. Repeat step 2 for continued conversation
+    4. Use voice_reply("goodbye", wait=False) to end without listening
 
     Args:
-        text: The text to speak aloud
-        wait_for_response: Whether to listen for response after speaking
+        text: The text to speak aloud (long text is automatically summarized)
+        wait_for_response: Whether to listen for response after speaking (default: True)
 
     Returns:
-        If wait_for_response: the user's spoken response
-        Otherwise: confirmation that text was spoken
+        If wait_for_response=True: the user's spoken response (transcribed text)
+        If wait_for_response=False: confirmation that text was spoken
     """
     engine = get_engine()
     logger.info(f"Voice reply: {text[:50]}...")
