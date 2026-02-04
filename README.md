@@ -1,5 +1,7 @@
 # Speech MCP Echo
 
+> **Based on**: [Kvadratni/speech-mcp](https://github.com/Kvadratni/speech-mcp) - the original Speech MCP project
+
 Voice interface for multiple AI CLIs - Claude Code, Gemini CLI, Codex CLI, and MCP-compatible tools.
 
 ## Features
