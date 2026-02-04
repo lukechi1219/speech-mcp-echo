@@ -35,7 +35,7 @@ class FasterWhisperSTT(BaseSTTAdapter):
         model: str = "base",
         device: str = "cpu",
         compute_type: str = "int8",
-        language: str = "en",
+        language: str = "auto",
     ):
         """
         Initialize faster-whisper STT.
@@ -94,6 +94,7 @@ class FasterWhisperSTT(BaseSTTAdapter):
             segments, info = self._whisper_model.transcribe(
                 audio_path,
                 language=self.language if self.language != "auto" else None,
+                task="transcribe",  # Keep original language, don't translate to English
                 beam_size=5,
                 vad_filter=True,
             )

@@ -24,6 +24,7 @@ DEFAULT_CONFIG = {
         "model": "base",
         "device": "cpu",
         "compute_type": "int8",
+        "language": "auto",  # Language code: auto, en, zh, ja, etc. "auto" detects language
         "timeout": 45,  # Audio recording timeout in seconds (safe for most CLIs)
         # API keys read from environment by default
     },
@@ -107,6 +108,17 @@ def get_env(name: str, default: Optional[str] = None) -> Optional[str]:
 
     # Try without prefix
     return os.environ.get(name, default)
+
+
+def get_env_setting(name: str, default: Optional[str] = None) -> Optional[str]:
+    """Get environment variable setting (alias for get_env)."""
+    return get_env(name, default)
+
+
+def set_env_setting(name: str, value: str) -> None:
+    """Set environment variable with prefix."""
+    prefixed = f"{ENV_PREFIX}{name}"
+    os.environ[prefixed] = value
 
 
 def get_api_key(service: str) -> Optional[str]:

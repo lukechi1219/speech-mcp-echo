@@ -69,6 +69,7 @@ class VoiceEngine:
                 model=get_setting("stt", "model", "base"),
                 device=get_setting("stt", "device", "cpu"),
                 compute_type=get_setting("stt", "compute_type", "int8"),
+                language=get_setting("stt", "language", "auto"),
             )
         elif engine_name == "openai":
             from speech_mcp_echo.stt_adapters.openai_whisper_adapter import OpenAIWhisperSTT
@@ -91,20 +92,16 @@ class VoiceEngine:
                 language=get_setting("tts", "language", "cmn-TW"),
             )
         elif engine_name == "kokoro":
-            from speech_mcp_echo.tts_adapters.kokoro_adapter import KokoroTTS
-            return KokoroTTS(
-                voice=get_setting("tts", "voice", "af_heart"),
-            )
+            raise ValueError("Kokoro TTS is not available in this project. Use 'google' or 'openai' instead.")
         elif engine_name == "openai":
             from speech_mcp_echo.tts_adapters.openai_tts_adapter import OpenAITTS
             return OpenAITTS(
                 voice=get_setting("tts", "voice", "alloy"),
             )
         elif engine_name == "pyttsx3":
-            from speech_mcp_echo.tts_adapters.pyttsx3_adapter import Pyttsx3TTS
-            return Pyttsx3TTS()
+            raise ValueError("pyttsx3 TTS is not available in this project. Use 'google' or 'openai' instead.")
         else:
-            raise ValueError(f"Unknown TTS engine: {engine_name}")
+            raise ValueError(f"Unknown TTS engine: {engine_name}. Available: google, openai")
 
     def _create_summarizer(self):
         """Create summarizer based on configuration."""

@@ -2,7 +2,7 @@
 TTS adapters for speech-mcp-echo.
 
 Each adapter implements BaseTTSAdapter to provide text-to-speech capabilities.
-Supported engines: Google Cloud TTS, Kokoro (local), OpenAI TTS, pyttsx3 (system).
+Supported engines: Google Cloud TTS, OpenAI TTS.
 """
 
 from abc import ABC, abstractmethod
@@ -86,16 +86,6 @@ class BaseTTSAdapter(ABC):
 # Import available adapters
 try:
     from speech_mcp_echo.tts_adapters.google_tts_adapter import GoogleCloudTTS
-except ImportError:
-    pass
-
-try:
-    from speech_mcp_echo.tts_adapters.kokoro_adapter import KokoroTTS
-except ImportError:
-    pass
-
-try:
-    from speech_mcp_echo.tts_adapters.pyttsx3_adapter import Pyttsx3TTS
 except ImportError:
     pass
 
