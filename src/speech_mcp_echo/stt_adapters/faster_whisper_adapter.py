@@ -5,6 +5,7 @@ Uses faster-whisper for local speech-to-text transcription.
 """
 
 import logging
+import queue
 import tempfile
 import threading
 import time
@@ -108,17 +109,25 @@ class FasterWhisperSTT(BaseSTTAdapter):
             logger.error(f"Transcription failed: {e}")
             raise
 
-    def listen(self) -> str:
+    def listen(self, timeout: Optional[int] = None) -> str:
         """
         Listen for speech and return transcription.
 
+        Args:
+            timeout: Maximum seconds to wait for audio (None = wait indefinitely)
+
         Returns:
-            Transcribed text
+            Transcribed text or empty string if timeout
         """
         self._ensure_initialized()
 
-        # Record audio
-        audio_path = self._record_audio()
+        # Record audio with timeout
+        audio_path = self._record_audio(timeout=timeout)
+
+        # Return empty string if timeout occurred
+        if not audio_path:
+            logger.warning("Audio recording timeout - no transcription available")
+            return ""
 
         try:
             # Transcribe
@@ -131,77 +140,118 @@ class FasterWhisperSTT(BaseSTTAdapter):
             except Exception:
                 pass
 
-    def _record_audio(self) -> str:
+    def _record_audio(self, timeout: Optional[int] = None) -> Optional[str]:
         """
         Record audio from microphone until silence detected.
 
+        Args:
+            timeout: Maximum seconds to wait for audio (None = wait indefinitely)
+
         Returns:
-            Path to temporary audio file
+            Path to temporary audio file, or None if timeout occurred
         """
         import pyaudio
         import numpy as np
         import wave
+        import queue
 
-        logger.info("Starting audio recording...")
+        logger.info(f"Starting audio recording (timeout: {timeout}s)..." if timeout else "Starting audio recording...")
 
-        audio = pyaudio.PyAudio()
+        # Use queues for thread-safe communication
+        result_queue = queue.Queue()
+        exception_queue = queue.Queue()
 
-        # Open stream
-        stream = audio.open(
-            format=pyaudio.paInt16,
-            channels=CHANNELS,
-            rate=SAMPLE_RATE,
-            input=True,
-            frames_per_buffer=CHUNK_SIZE,
-        )
+        def _recording_thread():
+            """Thread function that performs the actual recording."""
+            try:
+                audio = pyaudio.PyAudio()
 
-        frames = []
-        silence_start = None
-        has_speech = False
+                # Open stream
+                stream = audio.open(
+                    format=pyaudio.paInt16,
+                    channels=CHANNELS,
+                    rate=SAMPLE_RATE,
+                    input=True,
+                    frames_per_buffer=CHUNK_SIZE,
+                )
 
-        try:
-            while True:
-                # Read audio chunk
-                data = stream.read(CHUNK_SIZE, exception_on_overflow=False)
-                frames.append(data)
+                frames = []
+                silence_start = None
+                has_speech = False
 
-                # Convert to numpy for analysis
-                audio_data = np.frombuffer(data, dtype=np.int16)
-                audio_float = audio_data.astype(np.float32) / 32768.0
+                try:
+                    while True:
+                        # Read audio chunk (blocking call)
+                        data = stream.read(CHUNK_SIZE, exception_on_overflow=False)
+                        frames.append(data)
 
-                # Calculate RMS amplitude
-                rms = np.sqrt(np.mean(audio_float**2))
+                        # Convert to numpy for analysis
+                        audio_data = np.frombuffer(data, dtype=np.int16)
+                        audio_float = audio_data.astype(np.float32) / 32768.0
 
-                # Detect speech/silence
-                if rms > SILENCE_THRESHOLD:
-                    has_speech = True
-                    silence_start = None
-                else:
-                    if has_speech and silence_start is None:
-                        silence_start = time.time()
-                    elif silence_start is not None:
-                        silence_duration = time.time() - silence_start
-                        if silence_duration >= MAX_SILENCE_DURATION:
-                            logger.info("Silence detected, stopping recording")
-                            break
+                        # Calculate RMS amplitude
+                        rms = np.sqrt(np.mean(audio_float**2))
 
-        finally:
-            stream.stop_stream()
-            stream.close()
-            audio.terminate()
+                        # Detect speech/silence
+                        if rms > SILENCE_THRESHOLD:
+                            has_speech = True
+                            silence_start = None
+                        else:
+                            if has_speech and silence_start is None:
+                                silence_start = time.time()
+                            elif silence_start is not None:
+                                silence_duration = time.time() - silence_start
+                                if silence_duration >= MAX_SILENCE_DURATION:
+                                    logger.info("Silence detected, stopping recording")
+                                    break
 
-        # Save to temporary file
-        with tempfile.NamedTemporaryFile(suffix=".wav", delete=False) as f:
-            temp_path = f.name
+                finally:
+                    stream.stop_stream()
+                    stream.close()
+                    audio.terminate()
 
-        with wave.open(temp_path, "wb") as wf:
-            wf.setnchannels(CHANNELS)
-            wf.setsampwidth(audio.get_sample_size(pyaudio.paInt16))
-            wf.setframerate(SAMPLE_RATE)
-            wf.writeframes(b"".join(frames))
+                # Save to temporary file
+                with tempfile.NamedTemporaryFile(suffix=".wav", delete=False) as f:
+                    temp_path = f.name
 
-        logger.info(f"Audio saved to: {temp_path}")
-        return temp_path
+                with wave.open(temp_path, "wb") as wf:
+                    wf.setnchannels(CHANNELS)
+                    wf.setsampwidth(audio.get_sample_size(pyaudio.paInt16))
+                    wf.setframerate(SAMPLE_RATE)
+                    wf.writeframes(b"".join(frames))
+
+                logger.info(f"Audio saved to: {temp_path}")
+                result_queue.put(temp_path)
+
+            except Exception as e:
+                logger.error(f"Recording thread error: {e}")
+                exception_queue.put(e)
+
+        # Start recording thread
+        thread = threading.Thread(target=_recording_thread, daemon=True)
+        thread.start()
+
+        # Wait with timeout
+        thread.join(timeout=timeout)
+
+        # Check if timeout occurred
+        if thread.is_alive():
+            logger.warning(f"Audio recording timeout after {timeout}s")
+            # Note: Thread continues running but we return None
+            # The daemon thread will be cleaned up when process exits
+            return None
+
+        # Check for exceptions
+        if not exception_queue.empty():
+            raise exception_queue.get()
+
+        # Get result
+        if not result_queue.empty():
+            return result_queue.get()
+
+        # Should not reach here, but handle gracefully
+        logger.warning("Recording completed but no result available")
+        return None
 
     def transcribe_stream(
         self,

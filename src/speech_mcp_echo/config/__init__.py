@@ -24,6 +24,7 @@ DEFAULT_CONFIG = {
         "model": "base",
         "device": "cpu",
         "compute_type": "int8",
+        "timeout": 45,  # Audio recording timeout in seconds (safe for most CLIs)
         # API keys read from environment by default
     },
     "tts": {

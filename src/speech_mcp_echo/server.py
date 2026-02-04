@@ -37,7 +37,7 @@ def get_engine() -> VoiceEngine:
 
 
 @mcp.tool()
-def start_conversation() -> str:
+def start_conversation(timeout: Optional[int] = None) -> str:
     """
     Start a voice conversation by listening for user speech.
 
@@ -56,13 +56,17 @@ def start_conversation() -> str:
     After receiving the user's voice input, use voice_reply() to respond
     and continue the conversation.
 
+    Args:
+        timeout: Optional timeout in seconds (overrides config default of 45s)
+
     Returns:
         The transcription of the user's speech.
     """
     engine = get_engine()
-    logger.info("Starting voice conversation...")
+    timeout_msg = f" (timeout: {timeout}s)" if timeout else ""
+    logger.info(f"Starting voice conversation{timeout_msg}...")
     try:
-        transcription = engine.listen()
+        transcription = engine.listen(timeout=timeout)
         return transcription
     except Exception as e:
         logger.error(f"Start conversation failed: {e}")
@@ -70,20 +74,24 @@ def start_conversation() -> str:
 
 
 @mcp.tool()
-def voice_listen() -> str:
+def voice_listen(timeout: Optional[int] = None) -> str:
     """
     Listen for voice input and return the transcription.
 
     Start listening for speech through the microphone.
     Recording stops automatically after detecting silence.
 
+    Args:
+        timeout: Optional timeout in seconds (overrides config default of 45s)
+
     Returns:
         The transcribed text from speech.
     """
     engine = get_engine()
-    logger.info("Starting voice listening...")
+    timeout_msg = f" (timeout: {timeout}s)" if timeout else ""
+    logger.info(f"Starting voice listening{timeout_msg}...")
     try:
-        transcription = engine.listen()
+        transcription = engine.listen(timeout=timeout)
         return transcription
     except Exception as e:
         logger.error(f"Listen failed: {e}")
@@ -116,7 +124,7 @@ def voice_speak(text: str, summarize: bool = True) -> str:
 
 
 @mcp.tool()
-def voice_reply(text: str, wait_for_response: bool = True) -> str:
+def voice_reply(text: str, wait_for_response: bool = True, timeout: Optional[int] = None) -> str:
     """
     Speak text and optionally wait for voice response.
 
@@ -136,6 +144,7 @@ def voice_reply(text: str, wait_for_response: bool = True) -> str:
     Args:
         text: The text to speak aloud (long text is automatically summarized)
         wait_for_response: Whether to listen for response after speaking (default: True)
+        timeout: Optional timeout in seconds for listening (overrides config default of 45s)
 
     Returns:
         If wait_for_response=True: the user's spoken response (transcribed text)
@@ -148,7 +157,7 @@ def voice_reply(text: str, wait_for_response: bool = True) -> str:
 
         if wait_for_response:
             time.sleep(0.5)
-            response = engine.listen()
+            response = engine.listen(timeout=timeout)
             return response
         else:
             return f"Spoke: {spoken}"
@@ -160,6 +169,7 @@ def voice_reply(text: str, wait_for_response: bool = True) -> str:
 @mcp.tool()
 def voice_config(
     stt_engine: Optional[str] = None,
+    stt_timeout: Optional[int] = None,
     tts_engine: Optional[str] = None,
     tts_voice: Optional[str] = None,
     tts_language: Optional[str] = None,
@@ -173,6 +183,7 @@ def voice_config(
 
     Args:
         stt_engine: STT engine (faster-whisper, openai, google)
+        stt_timeout: STT timeout in seconds (default: 45)
         tts_engine: TTS engine (google, kokoro, openai, pyttsx3)
         tts_voice: TTS voice name
         tts_language: TTS language code
@@ -187,6 +198,10 @@ def voice_config(
     if stt_engine is not None:
         set_setting("stt", "engine", stt_engine)
         changes.append(f"STT engine: {stt_engine}")
+
+    if stt_timeout is not None:
+        set_setting("stt", "timeout", stt_timeout)
+        changes.append(f"STT timeout: {stt_timeout}s")
 
     if tts_engine is not None:
         set_setting("tts", "engine", tts_engine)
@@ -210,6 +225,7 @@ def voice_config(
 
     config_summary = {
         "stt_engine": get_setting("stt", "engine"),
+        "stt_timeout": get_setting("stt", "timeout"),
         "tts_engine": get_setting("tts", "engine"),
         "tts_voice": get_setting("tts", "voice"),
         "tts_language": get_setting("tts", "language"),

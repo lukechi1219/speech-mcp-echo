@@ -131,9 +131,12 @@ class VoiceEngine:
         else:
             return None
 
-    def listen(self) -> str:
+    def listen(self, timeout: Optional[int] = None) -> str:
         """
         Listen for speech and return transcription.
+
+        Args:
+            timeout: Optional timeout in seconds (overrides config default)
 
         Returns:
             Transcribed text from speech
@@ -142,7 +145,17 @@ class VoiceEngine:
             self._on_listening_start()
 
         try:
-            transcription = self.stt_engine.listen()
+            # Get timeout from parameter or config
+            if timeout is None:
+                timeout = get_setting("stt", "timeout", default=45)
+
+            logger.info(f"Starting voice listening (timeout: {timeout}s)...")
+            transcription = self.stt_engine.listen(timeout=timeout)
+
+            if not transcription:
+                logger.warning("No speech detected within timeout")
+                return ""
+
             logger.info(f"Transcription: {transcription[:50]}...")
             return transcription
         finally:

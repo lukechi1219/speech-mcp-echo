@@ -7,7 +7,7 @@ Speech MCP Echo is a voice interface for multiple AI CLIs using the MCP (Model C
 **Key Features:**
 - **Universal MCP support**: Single server works with all MCP-compatible CLIs
 - Configurable STT (faster-whisper local, OpenAI/Google cloud)
-- Configurable TTS (Google Cloud TTS primary, pyttsx3 fallback)
+- Configurable TTS (Google Cloud TTS, OpenAI TTS with 6 voices)
 - JARVIS-style response summarizer (English + Chinese)
 - PyQt5 UI with audio visualization (coming soon)
 
@@ -15,12 +15,14 @@ Speech MCP Echo is a voice interface for multiple AI CLIs using the MCP (Model C
 
 All target CLIs support MCP natively, so we use a **single MCP server** for all:
 
-| CLI | MCP Support | Config Location |
-|-----|-------------|-----------------|
-| Claude Code | Native | `~/.claude.json` mcpServers |
-| Gemini CLI | Native | `~/.gemini/settings.json` |
-| Codex CLI | Native | `~/.codex/config.toml` |
-| Goose CLI | Native | Extension command |
+| CLI | MCP Support | Voice Compatibility | Config Location |
+|-----|-------------|---------------------|-----------------|
+| Claude Code | Native | ✅ Excellent | `~/.claude.json` mcpServers |
+| Goose CLI | Native | ✅ Good | Extension command |
+| Gemini CLI | Native | ⚠️ Slow (5+ min/call) | `~/.gemini/settings.json` |
+| Codex CLI | Native | 🔲 Untested | `~/.codex/config.toml` |
+
+**Note:** Gemini CLI performs extensive internal processing before/after MCP tool calls, making it unsuitable for real-time voice interactions. Claude Code and Goose CLI are recommended for voice use.
 
 No adapter pattern needed - the same `server.py` serves all CLIs.
 
@@ -44,16 +46,29 @@ source .venv/bin/activate
 | PyAudio | 0.2.14 |
 
 ### Installation
-```bash
-# Prerequisites
-brew install portaudio
 
-# Create venv and install with uv (recommended - 4x faster than pip)
+**Prerequisites:**
+```bash
+# Install uv (fast Python package manager - recommended)
+curl -LsSf https://astral.sh/uv/install.sh | sh
+# Or: pip install uv
+
+# Install PortAudio (for PyAudio)
+brew install portaudio  # macOS
+# Or: apt-get install portaudio19-dev  # Linux
+```
+
+**Setup with uv (recommended - 4x faster than pip):**
+```bash
+cd speech-mcp-echo
 uv venv .venv --python 3.13
 source .venv/bin/activate
 uv pip install -e ".[recommended]"
+```
 
-# Or with pip (slower)
+**Or with pip (slower alternative):**
+```bash
+cd speech-mcp-echo
 python3 -m venv .venv
 source .venv/bin/activate
 pip install -e ".[recommended]"
@@ -148,11 +163,12 @@ Config file: `~/.config/speech-mcp-echo/config.json`
   "stt": {
     "engine": "faster-whisper",
     "model": "base",
-    "device": "cpu"
+    "device": "cpu",
+    "timeout": 45  // Audio recording timeout in seconds (default: 45)
   },
   "tts": {
-    "engine": "google",
-    "voice": "cmn-TW-Standard-B",
+    "engine": "google",  // Options: "google", "openai"
+    "voice": "cmn-TW-Standard-B",  // Google voice or OpenAI: alloy, echo, fable, onyx, nova, shimmer
     "language": "cmn-TW"
   },
   "summarizer": {
@@ -161,6 +177,33 @@ Config file: `~/.config/speech-mcp-echo/config.json`
     "language": "en"
   }
 }
+```
+
+### Audio Recording Timeout
+
+The `stt.timeout` setting controls how long the system waits for audio input before timing out:
+
+- **Default: 45 seconds** - Balances CLI constraints with practical audio capture needs
+- **For Codex CLI**: Use 45s or less (Codex has ~60s MCP timeout)
+- **For Claude Code**: Can use longer (120s+) if needed
+- **Can be overridden per-call** in MCP tools via the `timeout` parameter
+
+**Why timeout is needed:** PyAudio's blocking audio capture has no timeout. Without this, MCP tools would block indefinitely, causing CLI timeouts in environments like Codex.
+
+**Configuration examples:**
+
+```bash
+# Via config file
+echo '{"stt": {"timeout": 30}}' > ~/.config/speech-mcp-echo/config.json
+
+# Via environment variable
+export SPEECH_MCP_ECHO_STT_TIMEOUT=30
+
+# Via MCP tool (runtime)
+voice_config(stt_timeout=30)
+
+# Override per-call
+start_conversation(timeout=60)
 ```
 
 ## Google Cloud TTS Authentication
@@ -183,6 +226,32 @@ The adapter supports three methods (auto-detected in order):
    pip install google-cloud-texttospeech
    ```
 
+## OpenAI TTS Configuration
+
+Set your API key via environment variable:
+
+```bash
+export OPENAI_API_KEY="sk-..."
+```
+
+**Available voices:** `alloy`, `echo`, `fable`, `onyx`, `nova`, `shimmer`
+
+**Models:**
+- `tts-1`: Fast, standard quality (default)
+- `tts-1-hd`: Higher quality, slower
+
+**Example configuration:**
+```bash
+# Switch to OpenAI TTS with nova voice
+export SPEECH_MCP_TTS_ENGINE=openai
+export SPEECH_MCP_TTS_VOICE=nova
+```
+
+Or use the MCP tool at runtime:
+```python
+voice_config(tts_engine="openai", tts_voice="nova")
+```
+
 ## Testing
 
 ```bash
@@ -196,11 +265,18 @@ python tests/test_full_voice_flow.py --lang en             # With microphone
 
 # Individual component tests:
 
-# Test TTS only
+# Test TTS - Google Cloud
 python -c "
 from speech_mcp_echo.tts_adapters.google_tts_adapter import GoogleCloudTTS
 tts = GoogleCloudTTS(language='en-GB')
 tts.speak('Hello, this is a test.')
+"
+
+# Test TTS - OpenAI
+python -c "
+from speech_mcp_echo.tts_adapters.openai_tts_adapter import OpenAITTS
+tts = OpenAITTS(voice='nova')
+tts.speak('Hello from OpenAI TTS.')
 "
 
 # Test STT only (requires microphone)
@@ -302,14 +378,16 @@ goose session --with-extension "speech-mcp-echo"
 
 ## Available MCP Tools
 
-| Tool | Description |
-|------|-------------|
-| `start_conversation` | Start a voice conversation (use when user says "let's talk") |
-| `voice_listen` | Listen for voice input and return transcription |
-| `voice_speak` | Speak text using TTS (with optional summarization) |
-| `voice_reply` | Speak text and listen for response (for ongoing conversations) |
-| `voice_config` | Configure STT, TTS, and summarizer settings |
-| `voice_status` | Get voice system status and detected CLI |
+| Tool | Description | Parameters |
+|------|-------------|------------|
+| `start_conversation` | Start a voice conversation (use when user says "let's talk") | `timeout` (optional, int) |
+| `voice_listen` | Listen for voice input and return transcription | `timeout` (optional, int) |
+| `voice_speak` | Speak text using TTS (with optional summarization) | `text` (str), `summarize` (bool) |
+| `voice_reply` | Speak text and listen for response (for ongoing conversations) | `text` (str), `wait_for_response` (bool), `timeout` (optional, int) |
+| `voice_config` | Configure STT, TTS, and summarizer settings | `stt_engine`, `stt_timeout`, `tts_engine`, `tts_voice`, `tts_language`, `summarizer_enabled`, `summarizer_personality` |
+| `voice_status` | Get voice system status and detected CLI | None |
+
+**Timeout Parameter:** All listening tools accept an optional `timeout` parameter (in seconds) to override the configured default (45s). This is useful for CLIs with different MCP timeout constraints.
 
 ## Voice Conversation Flow
 
