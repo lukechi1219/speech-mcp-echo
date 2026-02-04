@@ -159,14 +159,14 @@ Add to your Claude Code MCP configuration (`~/.claude.json`):
 {
   "mcpServers": {
     "speech-mcp-echo": {
-      "command": "python",
-      "args": ["-m", "speech_mcp_echo", "--adapter", "claude-code"]
+      "command": "speech-mcp-echo"
     }
   }
 }
 ```
 
 Then in Claude Code, you can use:
+- `start_conversation` - Start a voice conversation
 - `voice_listen` - Listen for voice input
 - `voice_speak` - Speak text using TTS
 - `voice_reply` - Speak and wait for response
@@ -176,13 +176,10 @@ Then in Claude Code, you can use:
 ### Standalone
 
 ```bash
-# Run as MCP server (for Goose, etc.)
+# Run as MCP server (works with all MCP-compatible CLIs)
 speech-mcp-echo
 
-# Run with specific adapter
-speech-mcp-echo --adapter claude-code
-
-# Launch UI
+# Launch with PyQt5 UI
 speech-mcp-echo --ui
 ```
 
@@ -231,27 +228,40 @@ API keys are read from environment variables:
 ## Architecture
 
 ```
-speech_mcp_echo/
-├── core/                    # Protocol-agnostic core
-│   ├── voice_engine.py      # Main voice functionality
-│   └── protocol_adapter.py  # Base adapter interface
-├── adapters/                # CLI protocol adapters
-│   ├── claude_code_adapter.py
-│   ├── mcp_adapter.py
-│   ├── gemini_adapter.py
-│   └── codex_adapter.py
+src/speech_mcp_echo/
+├── __init__.py              # Main entry point
+├── __main__.py              # Module execution
+├── audio_processor.py       # Audio capture, playback, cues
+├── constants.py             # Centralized constants
+├── server.py                # Unified MCP server (all tools)
+├── speech_recognition.py    # Legacy speech recognition
+├── state_manager.py         # Application state
+├── streaming_transcriber.py # Real-time transcription
+├── config/                  # Configuration management
+├── core/
+│   └── voice_engine.py      # STT, TTS, summarization
+├── resources/
+│   └── audio/               # Audio cue files (.wav)
 ├── stt_adapters/            # Speech-to-text engines
-│   ├── faster_whisper_adapter.py
-│   ├── openai_whisper_adapter.py
-│   └── google_speech_adapter.py
+│   ├── faster_whisper_adapter.py  # Local (recommended)
+│   ├── openai_whisper_adapter.py  # Cloud
+│   └── google_speech_adapter.py   # Cloud
 ├── tts_adapters/            # Text-to-speech engines
-│   ├── google_tts_adapter.py
-│   ├── kokoro_adapter.py
-│   └── openai_tts_adapter.py
+│   ├── google_tts_adapter.py      # Cloud (recommended)
+│   └── openai_tts_adapter.py      # Cloud
 ├── summarizer/              # Response summarization
 │   ├── local_summarizer.py  # Rule-based with JARVIS personality
-│   └── llm_summarizer.py    # LLM-based summarization
-└── config/                  # Configuration management
+│   └── llm_summarizer.py    # LLM-based (placeholder)
+├── ui/                      # PyQt5 UI
+│   ├── components/          # Reusable UI components
+│   │   ├── animated_button.py
+│   │   ├── audio_processor_ui.py
+│   │   ├── audio_visualizer.py
+│   │   └── tts_adapter.py
+│   └── pyqt/
+│       └── pyqt_ui.py       # Main PyQt5 UI window
+└── utils/
+    └── logger.py            # Centralized logging
 ```
 
 ## Development
@@ -272,4 +282,4 @@ MIT
 
 ## Credits
 
-Adapted from [speech-mcp](https://github.com/lukechi1219/speech-mcp) with multi-CLI support.
+Adapted from [Kvadratni/speech-mcp](https://github.com/Kvadratni/speech-mcp) with multi-CLI support.

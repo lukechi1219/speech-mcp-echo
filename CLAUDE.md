@@ -9,7 +9,7 @@ Speech MCP Echo is a voice interface for multiple AI CLIs using the MCP (Model C
 - Configurable STT (faster-whisper local, OpenAI/Google cloud)
 - Configurable TTS (Google Cloud TTS, OpenAI TTS with 6 voices)
 - JARVIS-style response summarizer (English + Chinese)
-- PyQt5 UI with audio visualization (coming soon)
+- PyQt5 UI with audio visualization
 
 ## Multi-CLI Support (MCP Protocol)
 
@@ -80,21 +80,37 @@ pip install -e ".[recommended]"
 src/speech_mcp_echo/
 ├── __init__.py              # Main entry point
 ├── __main__.py              # Module execution
-├── server.py                # Unified MCP server with all tools
-├── core/                    # Protocol-agnostic core
+├── audio_processor.py       # Audio capture, playback, cues
+├── constants.py             # Centralized constants
+├── server.py                # Unified MCP server (all tools)
+├── speech_recognition.py    # Legacy speech recognition
+├── state_manager.py         # Application state
+├── streaming_transcriber.py # Real-time transcription
+├── config/                  # Configuration management
+├── core/
 │   └── voice_engine.py      # STT, TTS, summarization
+├── resources/
+│   └── audio/               # Audio cue files (.wav)
 ├── stt_adapters/            # Speech-to-text engines
 │   ├── faster_whisper_adapter.py  # Local (recommended)
 │   ├── openai_whisper_adapter.py  # Cloud
 │   └── google_speech_adapter.py   # Cloud
 ├── tts_adapters/            # Text-to-speech engines
-│   └── google_tts_adapter.py      # Cloud (recommended)
+│   ├── google_tts_adapter.py      # Cloud (recommended)
+│   └── openai_tts_adapter.py      # Cloud
 ├── summarizer/              # Response summarization
 │   ├── local_summarizer.py  # Rule-based with JARVIS personality
 │   └── llm_summarizer.py    # LLM-based (placeholder)
-├── config/                  # Configuration management
-├── utils/                   # Logging utilities
-└── ui/                      # PyQt5 UI (coming soon)
+├── ui/                      # PyQt5 UI
+│   ├── components/          # Reusable UI components
+│   │   ├── animated_button.py
+│   │   ├── audio_processor_ui.py
+│   │   ├── audio_visualizer.py
+│   │   └── tts_adapter.py
+│   └── pyqt/
+│       └── pyqt_ui.py       # Main PyQt5 UI window
+└── utils/
+    └── logger.py            # Centralized logging
 ```
 
 ## Full Voice Flow
