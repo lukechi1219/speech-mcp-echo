@@ -1,37 +1,31 @@
 # Cleanup Notes
 
-## Unused Legacy Code (Can be Removed)
+## ✅ Legacy Code Removed (2026-02-04)
 
-The following files are **not imported anywhere** in the codebase and appear to be legacy code that can be safely removed:
+The following unused files have been **removed** in commit `ef4c182`:
 
-### 1. `src/speech_mcp_echo/speech_recognition.py` (138 lines)
-- Legacy speech recognition module
-- Not imported by any other module
-- Functionality replaced by STT adapters
+### Removed Files
+1. ~~`src/speech_mcp_echo/speech_recognition.py`~~ (30KB)
+2. ~~`src/speech_mcp_echo/streaming_transcriber.py`~~ (12KB)
+3. ~~`src/speech_mcp_echo/state_manager.py`~~ (6KB)
 
-### 2. `src/speech_mcp_echo/streaming_transcriber.py` (219 lines)
-- Real-time streaming transcription module
-- Not imported by any other module
-- Functionality may be reintroduced later if needed
+**Total removed**: ~1,224 lines / ~48KB
 
-### 3. `src/speech_mcp_echo/state_manager.py` (143 lines)
-- Application state management
-- Not imported by any other module
-- State is now managed directly in the MCP server
+### Verification
+All tests passed after removal:
+- ✓ All imports successful
+- ✓ Server module loads
+- ✓ VoiceEngine loads
+- ✓ All adapters import correctly
+- ✓ Main function works
+- ✓ CLI entry point functional
 
-**Total removable code**: ~500 lines
+### Codebase Statistics
+- **Before cleanup**: 4,614 lines
+- **After cleanup**: 3,390 lines
+- **Reduction**: 26.5%
 
-## Recommendation
-
-These files can be removed in a future commit to simplify the codebase. If their functionality is needed later, they can be recovered from git history.
-
-```bash
-# To remove (after verification):
-git rm src/speech_mcp_echo/speech_recognition.py
-git rm src/speech_mcp_echo/streaming_transcriber.py
-git rm src/speech_mcp_echo/state_manager.py
-git commit -m "chore: Remove unused legacy code"
-```
+These files can be recovered from git history if needed.
 
 ## PyPI Package Name
 

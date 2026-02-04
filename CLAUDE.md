@@ -82,9 +82,6 @@ src/speech_mcp_echo/
 ├── audio_processor.py       # Audio capture, playback, cues
 ├── constants.py             # Centralized constants
 ├── server.py                # Unified MCP server (all tools)
-├── speech_recognition.py    # Legacy speech recognition
-├── state_manager.py         # Application state
-├── streaming_transcriber.py # Real-time transcription
 ├── config/                  # Configuration management
 ├── core/
 │   └── voice_engine.py      # STT, TTS, summarization

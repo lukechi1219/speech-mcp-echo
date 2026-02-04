@@ -227,9 +227,6 @@ src/speech_mcp_echo/
 ├── audio_processor.py       # 音訊擷取、播放、提示音
 ├── constants.py             # 集中管理的常數
 ├── server.py                # 統一的 MCP 伺服器（所有工具）
-├── speech_recognition.py    # 舊版語音辨識
-├── state_manager.py         # 應用程式狀態
-├── streaming_transcriber.py # 即時轉錄
 ├── config/                  # 設定管理
 ├── core/
 │   └── voice_engine.py      # STT、TTS、摘要
