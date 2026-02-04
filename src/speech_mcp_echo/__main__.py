@@ -2,7 +2,7 @@
 Entry point for running speech-mcp-echo as a module.
 
 Usage:
-    python -m speech_mcp_echo [--ui]
+    python -m speech_mcp_echo
 
 Starts the MCP server that works with all MCP-compatible CLIs:
 - Claude Code

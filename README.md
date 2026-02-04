@@ -113,7 +113,6 @@ pip install -e .
 # Or install specific features
 pip install -e ".[local-stt]"  # Add faster-whisper
 pip install -e ".[cloud]"      # Add cloud API clients
-pip install -e ".[ui]"         # Add PyQt5 UI
 ```
 
 ### Manual Installation (Core packages only)
@@ -127,9 +126,6 @@ pip install faster-whisper numba
 
 # MCP support
 pip install "mcp[cli]>=1.2.0" "pydantic>=2.7.2,<3.0.0"
-
-# Optional: PyQt5 UI
-pip install PyQt5
 
 # Optional: Cloud API clients (if using OpenAI services)
 pip install openai
@@ -178,9 +174,6 @@ Then in Claude Code, you can use:
 ```bash
 # Run as MCP server (works with all MCP-compatible CLIs)
 speech-mcp-echo
-
-# Launch with PyQt5 UI
-speech-mcp-echo --ui
 ```
 
 ## Configuration
@@ -252,14 +245,6 @@ src/speech_mcp_echo/
 ├── summarizer/              # Response summarization
 │   ├── local_summarizer.py  # Rule-based with JARVIS personality
 │   └── llm_summarizer.py    # LLM-based (placeholder)
-├── ui/                      # PyQt5 UI
-│   ├── components/          # Reusable UI components
-│   │   ├── animated_button.py
-│   │   ├── audio_processor_ui.py
-│   │   ├── audio_visualizer.py
-│   │   └── tts_adapter.py
-│   └── pyqt/
-│       └── pyqt_ui.py       # Main PyQt5 UI window
 └── utils/
     └── logger.py            # Centralized logging
 ```

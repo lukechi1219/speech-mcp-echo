@@ -113,7 +113,6 @@ pip install -e .
 # 或安裝特定功能
 pip install -e ".[local-stt]"  # 加入 faster-whisper
 pip install -e ".[cloud]"      # 加入雲端 API 用戶端
-pip install -e ".[ui]"         # 加入 PyQt5 UI
 ```
 
 ### 手動安裝（僅核心套件）
@@ -127,9 +126,6 @@ pip install faster-whisper numba
 
 # MCP 支援
 pip install "mcp[cli]>=1.2.0" "pydantic>=2.7.2,<3.0.0"
-
-# 選用：PyQt5 UI
-pip install PyQt5
 
 # 選用：雲端 API 用戶端（如果使用 OpenAI 服務）
 pip install openai
@@ -178,9 +174,6 @@ pip install "misaki[ja]"  # 日文
 ```bash
 # 作為 MCP 伺服器執行（適用於所有 MCP 相容的 CLI）
 speech-mcp-echo
-
-# 啟動 PyQt5 UI
-speech-mcp-echo --ui
 ```
 
 ## 設定
@@ -252,14 +245,6 @@ src/speech_mcp_echo/
 ├── summarizer/              # 回應摘要
 │   ├── local_summarizer.py  # 基於規則，具 JARVIS 風格
 │   └── llm_summarizer.py    # 基於 LLM（預留位置）
-├── ui/                      # PyQt5 UI
-│   ├── components/          # 可重用 UI 元件
-│   │   ├── animated_button.py
-│   │   ├── audio_processor_ui.py
-│   │   ├── audio_visualizer.py
-│   │   └── tts_adapter.py
-│   └── pyqt/
-│       └── pyqt_ui.py       # 主要 PyQt5 UI 視窗
 └── utils/
     └── logger.py            # 集中管理的日誌
 ```

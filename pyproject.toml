@@ -80,11 +80,6 @@ mcp = [
     "pydantic>=2.7.2,<3.0.0",
 ]
 
-# UI
-ui = [
-    "PyQt5>=5.15.0",
-]
-
 # Development
 dev = [
     "pytest>=7.0.0",
@@ -95,12 +90,12 @@ dev = [
 
 # Recommended: Everything except heavy Kokoro/PyTorch
 recommended = [
-    "speech-mcp-echo[local-stt,local-tts-light,mcp,ui]",
+    "speech-mcp-echo[local-stt,local-tts-light,mcp]",
 ]
 
 # All optional dependencies (WARNING: includes PyTorch ~2GB)
 all = [
-    "speech-mcp-echo[local-stt,local-tts-kokoro,cloud-openai,cloud-google,mcp,ui,dev]",
+    "speech-mcp-echo[local-stt,local-tts-kokoro,cloud-openai,cloud-google,mcp,dev]",
 ]
 
 [project.scripts]

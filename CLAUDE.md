@@ -9,7 +9,6 @@ Speech MCP Echo is a voice interface for multiple AI CLIs using the MCP (Model C
 - Configurable STT (faster-whisper local, OpenAI/Google cloud)
 - Configurable TTS (Google Cloud TTS, OpenAI TTS with 6 voices)
 - JARVIS-style response summarizer (English + Chinese)
-- PyQt5 UI with audio visualization
 
 ## Multi-CLI Support (MCP Protocol)
 
@@ -101,14 +100,6 @@ src/speech_mcp_echo/
 ├── summarizer/              # Response summarization
 │   ├── local_summarizer.py  # Rule-based with JARVIS personality
 │   └── llm_summarizer.py    # LLM-based (placeholder)
-├── ui/                      # PyQt5 UI
-│   ├── components/          # Reusable UI components
-│   │   ├── animated_button.py
-│   │   ├── audio_processor_ui.py
-│   │   ├── audio_visualizer.py
-│   │   └── tts_adapter.py
-│   └── pyqt/
-│       └── pyqt_ui.py       # Main PyQt5 UI window
 └── utils/
     └── logger.py            # Centralized logging
 ```
