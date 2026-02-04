@@ -2,14 +2,27 @@
 
 ## Project Overview
 
-Speech MCP Echo is a voice interface for multiple AI CLIs (Claude Code, Gemini CLI, Codex CLI) and MCP-compatible tools.
+Speech MCP Echo is a voice interface for multiple AI CLIs using the MCP (Model Context Protocol).
 
 **Key Features:**
-- Multi-CLI support via protocol adapters
+- **Universal MCP support**: Single server works with all MCP-compatible CLIs
 - Configurable STT (faster-whisper local, OpenAI/Google cloud)
 - Configurable TTS (Google Cloud TTS primary, pyttsx3 fallback)
 - JARVIS-style response summarizer (English + Chinese)
 - PyQt5 UI with audio visualization (coming soon)
+
+## Multi-CLI Support (MCP Protocol)
+
+All target CLIs support MCP natively, so we use a **single MCP server** for all:
+
+| CLI | MCP Support | Config Location |
+|-----|-------------|-----------------|
+| Claude Code | Native | `~/.claude.json` mcpServers |
+| Gemini CLI | Native | `~/.gemini/settings.json` |
+| Codex CLI | Native | `~/.codex/config.toml` |
+| Goose CLI | Native | Extension command |
+
+No adapter pattern needed - the same `server.py` serves all CLIs.
 
 ## Development Environment
 
@@ -19,7 +32,7 @@ cd speech-mcp-echo
 source .venv/bin/activate
 ```
 
-### Current Versions (2026-02-03)
+### Current Versions (2026-02-04)
 | Package | Version |
 |---------|---------|
 | Python | 3.13 |
@@ -47,14 +60,9 @@ pip install -e ".[recommended]"
 src/speech_mcp_echo/
 ├── __init__.py              # Main entry point
 ├── __main__.py              # Module execution
+├── server.py                # Unified MCP server with all tools
 ├── core/                    # Protocol-agnostic core
-│   ├── voice_engine.py      # Main voice functionality
-│   └── protocol_adapter.py  # Base adapter interface
-├── adapters/                # CLI protocol adapters
-│   ├── mcp_adapter.py       # Generic MCP support
-│   ├── claude_code_adapter.py  # Claude Code (priority)
-│   ├── gemini_adapter.py    # Gemini CLI (placeholder)
-│   └── codex_adapter.py     # Codex CLI (placeholder)
+│   └── voice_engine.py      # STT, TTS, summarization
 ├── stt_adapters/            # Speech-to-text engines
 │   ├── faster_whisper_adapter.py  # Local (recommended)
 │   ├── openai_whisper_adapter.py  # Cloud
@@ -71,8 +79,6 @@ src/speech_mcp_echo/
 
 ## Full Voice Flow
 
-The complete voice interaction flow:
-
 ```
 ┌─────────────────────────────────────────────────────────────────┐
 │                         FULL VOICE FLOW                         │
@@ -83,7 +89,7 @@ The complete voice interaction flow:
 │     → Transcribed text                                          │
 │                                                                 │
 │  2. PROCESS (CLI)                                               │
-│     Transcribed text → Claude Code / Gemini / Codex            │
+│     Transcribed text → Claude Code / Gemini / Codex / Goose    │
 │     → AI response (potentially long)                            │
 │                                                                 │
 │  3. SUMMARIZE (Optional)                                        │
@@ -126,16 +132,6 @@ class BaseSTTAdapter:
     def get_available_models(self) -> list[str]: ...
     @property
     def is_initialized(self) -> bool: ...
-```
-
-### Protocol Adapter Pattern
-All CLI adapters implement `ProtocolAdapter`:
-```python
-class ProtocolAdapter:
-    def run(self, engine: VoiceEngine) -> None: ...
-    def get_capabilities(self) -> dict: ...
-    @property
-    def name(self) -> str: ...
 ```
 
 ## Configuration
@@ -219,23 +215,50 @@ print(s.summarize('Successfully created 5 files in the src directory.'))
 "
 ```
 
-## Claude Code Integration
+## CLI Integration
 
+### Claude Code
 Add to `~/.claude.json`:
 ```json
 {
   "mcpServers": {
-    "speech-mcp-echo": {
-      "command": "python",
-      "args": ["-m", "speech_mcp_echo", "--adapter", "claude-code"]
+    "speech": {
+      "command": "speech-mcp-echo"
     }
   }
 }
 ```
 
-Available tools:
-- `voice_listen` - Listen for voice input
-- `voice_speak` - Speak text using TTS
-- `voice_reply` - Speak and wait for response
-- `voice_config` - Configure settings
-- `voice_status` - Check system status
+### Gemini CLI
+Add to `~/.gemini/settings.json`:
+```json
+{
+  "mcpServers": {
+    "speech": {
+      "command": "speech-mcp-echo"
+    }
+  }
+}
+```
+
+### Codex CLI
+Add to `~/.codex/config.toml`:
+```toml
+[mcp.servers.speech]
+command = "speech-mcp-echo"
+```
+
+### Goose CLI
+```bash
+goose session --with-extension "speech-mcp-echo"
+```
+
+## Available MCP Tools
+
+| Tool | Description |
+|------|-------------|
+| `voice_listen` | Listen for voice input and return transcription |
+| `voice_speak` | Speak text using TTS (with optional summarization) |
+| `voice_reply` | Speak text and optionally wait for voice response |
+| `voice_config` | Configure STT, TTS, and summarizer settings |
+| `voice_status` | Get voice system status and detected CLI |

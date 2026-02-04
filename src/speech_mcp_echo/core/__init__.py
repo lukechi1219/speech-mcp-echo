@@ -1,11 +1,10 @@
 """
 Core voice engine - protocol-agnostic voice functionality.
 
-This module contains the core voice capabilities that can be used
-by any CLI adapter (MCP, Claude Code, Gemini, Codex, etc.)
+This module contains the core voice capabilities that are used
+directly by the MCP server (server.py) for all CLIs.
 """
 
 from speech_mcp_echo.core.voice_engine import VoiceEngine
-from speech_mcp_echo.core.protocol_adapter import ProtocolAdapter
 
-__all__ = ["VoiceEngine", "ProtocolAdapter"]
+__all__ = ["VoiceEngine"]

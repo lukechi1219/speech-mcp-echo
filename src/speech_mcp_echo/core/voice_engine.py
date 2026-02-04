@@ -2,6 +2,7 @@
 VoiceEngine - Protocol-agnostic core voice functionality.
 
 Handles STT, TTS, and summarization without being tied to any specific CLI protocol.
+The MCP server (server.py) uses this class directly for voice operations.
 """
 
 import logging
@@ -16,37 +17,25 @@ class VoiceEngine:
     """
     Core voice engine that provides STT, TTS, and summarization.
 
-    This class is protocol-agnostic and can be used by any CLI adapter.
+    This class is protocol-agnostic and used directly by the MCP server.
     """
 
-    def __init__(
-        self,
-        adapter: str = "auto",
-        config_path: Optional[str] = None,
-    ):
-        """
-        Initialize the voice engine.
-
-        Args:
-            adapter: CLI adapter to use (auto, mcp, claude-code, gemini, codex)
-            config_path: Optional path to configuration file
-        """
+    def __init__(self):
+        """Initialize the voice engine."""
         self.config = load_config()
-        self.adapter_name = adapter
 
         # Lazy-loaded components
         self._stt_engine = None
         self._tts_engine = None
         self._summarizer = None
-        self._protocol_adapter = None
 
-        # Callbacks for state changes
+        # Callbacks for state changes (useful for UI updates)
         self._on_listening_start: Optional[Callable] = None
         self._on_listening_end: Optional[Callable] = None
         self._on_speaking_start: Optional[Callable] = None
         self._on_speaking_end: Optional[Callable] = None
 
-        logger.info(f"VoiceEngine initialized with adapter: {adapter}")
+        logger.info("VoiceEngine initialized")
 
     @property
     def stt_engine(self):
@@ -201,61 +190,3 @@ class VoiceEngine:
         self._on_listening_end = on_listening_end
         self._on_speaking_start = on_speaking_start
         self._on_speaking_end = on_speaking_end
-
-    def run(self):
-        """
-        Run the voice engine with the configured adapter.
-
-        This is the main entry point when running as a standalone service.
-        """
-        adapter = self._get_adapter()
-        adapter.run(self)
-
-    def _get_adapter(self):
-        """Get the appropriate protocol adapter."""
-        if self._protocol_adapter is not None:
-            return self._protocol_adapter
-
-        adapter_name = self.adapter_name
-        if adapter_name == "auto":
-            adapter_name = self._detect_adapter()
-
-        logger.info(f"Using adapter: {adapter_name}")
-
-        if adapter_name == "mcp":
-            from speech_mcp_echo.adapters.mcp_adapter import MCPAdapter
-            self._protocol_adapter = MCPAdapter()
-        elif adapter_name == "claude-code":
-            from speech_mcp_echo.adapters.claude_code_adapter import ClaudeCodeAdapter
-            self._protocol_adapter = ClaudeCodeAdapter()
-        elif adapter_name == "gemini":
-            from speech_mcp_echo.adapters.gemini_adapter import GeminiAdapter
-            self._protocol_adapter = GeminiAdapter()
-        elif adapter_name == "codex":
-            from speech_mcp_echo.adapters.codex_adapter import CodexAdapter
-            self._protocol_adapter = CodexAdapter()
-        else:
-            # Default to MCP for now
-            from speech_mcp_echo.adapters.mcp_adapter import MCPAdapter
-            self._protocol_adapter = MCPAdapter()
-
-        return self._protocol_adapter
-
-    def _detect_adapter(self) -> str:
-        """Auto-detect which CLI adapter to use based on environment."""
-        import os
-
-        # Check for Claude Code indicators
-        if os.environ.get("CLAUDE_CODE"):
-            return "claude-code"
-
-        # Check for Gemini CLI indicators
-        if os.environ.get("GEMINI_CLI"):
-            return "gemini"
-
-        # Check for Codex CLI indicators
-        if os.environ.get("CODEX_CLI"):
-            return "codex"
-
-        # Default to MCP
-        return "mcp"
