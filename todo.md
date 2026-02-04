@@ -12,20 +12,24 @@
 - [x] Update README.md to match actual project structure
 - [x] Update CLAUDE.md with complete architecture
 - [x] Add Traditional Chinese README (README_zh_TW.md)
-- [ ] Add CONTRIBUTING.md with contribution guidelines
-- [ ] Add CHANGELOG.md for version history
-- [ ] Create GitHub issue templates
-- [ ] Create GitHub PR template
+- [x] Add CONTRIBUTING.md with contribution guidelines
+- [x] Add CHANGELOG.md for version history
+- [x] Create GitHub issue templates (bug report, feature request)
+- [x] Create GitHub PR template
 
 ### Code Quality
 - [ ] Add comprehensive unit tests (target: 80% coverage)
 - [ ] Add integration tests for STT/TTS adapters
-- [ ] Set up CI/CD with GitHub Actions
-  - [ ] Run tests on PR
-  - [ ] Lint with ruff/flake8
-  - [ ] Type check with mypy
-- [ ] Add pre-commit hooks configuration
-- [ ] Review and clean up unused code
+- [x] Set up CI/CD with GitHub Actions
+  - [x] Run tests on PR
+  - [x] Lint with ruff/black/isort
+  - [x] Type check with mypy
+  - [x] Build package
+  - [x] Multi-OS testing (Ubuntu, macOS, Windows)
+  - [x] Multi-Python testing (3.10, 3.11, 3.12)
+- [x] Add pre-commit hooks configuration
+- [x] Review and clean up unused code
+  - Identified unused legacy files: speech_recognition.py, streaming_transcriber.py, state_manager.py (can be removed)
 
 ### Package Publishing
 
@@ -38,10 +42,10 @@
   ```
 
 #### Phase 2: TestPyPI (v0.2.0)
-- [ ] Update `pyproject.toml` with complete metadata
-  - [ ] Verify package name availability on PyPI
-  - [ ] Add classifiers (Development Status, License, etc.)
-  - [ ] Add project URLs (Homepage, Documentation, Issues)
+- [x] Update `pyproject.toml` with complete metadata
+  - [x] Verify package name availability on PyPI (✅ "speech-mcp-echo" is available)
+  - [x] Add classifiers (Development Status, License, etc.)
+  - [x] Add project URLs (Homepage, Documentation, Issues, Changelog)
 - [ ] Build distribution:
   ```bash
   python -m build

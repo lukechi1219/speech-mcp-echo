@@ -1,0 +1,8 @@
+blank_issues_enabled: true
+contact_links:
+  - name: Questions & Discussions
+    url: https://github.com/lukechi1219/speech-mcp-echo/discussions
+    about: Ask questions and discuss ideas with the community
+  - name: Documentation
+    url: https://github.com/lukechi1219/speech-mcp-echo#readme
+    about: Read the project documentation
