@@ -19,8 +19,8 @@ logger = logging.getLogger(__name__)
 SAMPLE_RATE = 16000
 CHANNELS = 1
 CHUNK_SIZE = 1024
-SILENCE_THRESHOLD = 0.02
-MAX_SILENCE_DURATION = 3.0  # seconds
+SILENCE_THRESHOLD = 0.015  # RMS amplitude threshold (lower = more tolerant of quiet sounds)
+MAX_SILENCE_DURATION = 5.0  # seconds of silence before stopping (longer = more pause time)
 
 
 class FasterWhisperSTT(BaseSTTAdapter):
