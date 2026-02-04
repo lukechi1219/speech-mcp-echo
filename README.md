@@ -11,7 +11,6 @@ Voice interface for multiple AI CLIs - Claude Code, Gemini CLI, Codex CLI, and M
 - **Configurable TTS**: Local (pyttsx3) or cloud (Google Cloud TTS, OpenAI TTS)
 - **Bilingual Support**: English and Chinese (Traditional/Simplified) text processing
 - **JARVIS Summarizer**: Condenses long responses into concise, entertaining summaries
-- **PyQt5 UI**: Audio visualization and status display (coming soon)
 
 ## Why These Technology Choices?
 
