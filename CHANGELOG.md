@@ -7,6 +7,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-02-05
+
+### Added
+- **Continuous Listening Mode**: Non-blocking background listening for uninterrupted voice conversations
+  - `start_listening()` - Start background listening, returns session ID immediately
+  - `check_listening(session_id)` - Poll for status (listening/completed/timeout/error)
+  - `cancel_listening(session_id)` - Cancel an active listening session
+- Automatic retry on silence with configurable count (default: 10 retries ≈ 7.5 min tolerance)
+- Audible beep prompt (macOS Tink.aiff) when retrying after silence
+- New configuration options:
+  - `stt.silence_retry_count` - Number of retries when silence detected
+  - `stt.retry_prompt_type` - Prompt type: "beep", "voice", or "silent"
+- Thread-safe session management with automatic cleanup (30 min TTL)
+- 17 new tests for Start/Poll mode (74 total tests passing)
+
+### Changed
+- Updated documentation with new tools and conversation flows
+- Added new tools to recommended auto-approve list for Claude Code
+
 ## [0.1.0] - 2026-02-05
 
 ### Added
@@ -32,5 +51,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Audio timeout handling for MCP tool calls
 - Documentation accuracy (removed references to non-existent files)
 
-[Unreleased]: https://github.com/lukechi1219/speech-mcp-echo/compare/v0.1.0...HEAD
+[Unreleased]: https://github.com/lukechi1219/speech-mcp-echo/compare/v0.2.0...HEAD
+[0.2.0]: https://github.com/lukechi1219/speech-mcp-echo/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/lukechi1219/speech-mcp-echo/releases/tag/v0.1.0

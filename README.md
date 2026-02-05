@@ -19,13 +19,13 @@ Voice interface for multiple AI CLIs - Claude Code, Gemini CLI, Codex CLI, and M
 
 ```bash
 # With recommended dependencies (faster-whisper, Google TTS, OpenAI TTS)
-pip install 'speech-mcp-echo[recommended] @ git+https://github.com/lukechi1219/speech-mcp-echo.git@v0.1.0'
+pip install 'speech-mcp-echo[recommended] @ git+https://github.com/lukechi1219/speech-mcp-echo.git@v0.2.0'
 
 # Or basic installation
-pip install git+https://github.com/lukechi1219/speech-mcp-echo.git@v0.1.0
+pip install git+https://github.com/lukechi1219/speech-mcp-echo.git@v0.2.0
 
 # Or from wheel
-pip install https://github.com/lukechi1219/speech-mcp-echo/releases/download/v0.1.0/speech_mcp_echo-0.1.0-py3-none-any.whl
+pip install https://github.com/lukechi1219/speech-mcp-echo/releases/download/v0.2.0/speech_mcp_echo-0.2.0-py3-none-any.whl
 ```
 
 ### CLI Integration

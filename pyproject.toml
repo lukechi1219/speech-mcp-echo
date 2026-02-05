@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "speech-mcp-echo"
-version = "0.1.0"
+version = "0.2.0"
 description = "Voice interface for multiple AI CLIs - Claude Code, Gemini, Codex and more"
 readme = "README.md"
 license = "MIT"

@@ -19,13 +19,13 @@
 
 ```bash
 # 含推薦依賴套件（faster-whisper、Google TTS、OpenAI TTS）
-pip install 'speech-mcp-echo[recommended] @ git+https://github.com/lukechi1219/speech-mcp-echo.git@v0.1.0'
+pip install 'speech-mcp-echo[recommended] @ git+https://github.com/lukechi1219/speech-mcp-echo.git@v0.2.0'
 
 # 或基本安裝
-pip install git+https://github.com/lukechi1219/speech-mcp-echo.git@v0.1.0
+pip install git+https://github.com/lukechi1219/speech-mcp-echo.git@v0.2.0
 
 # 或從 wheel 安裝
-pip install https://github.com/lukechi1219/speech-mcp-echo/releases/download/v0.1.0/speech_mcp_echo-0.1.0-py3-none-any.whl
+pip install https://github.com/lukechi1219/speech-mcp-echo/releases/download/v0.2.0/speech_mcp_echo-0.2.0-py3-none-any.whl
 ```
 
 ### CLI 整合
