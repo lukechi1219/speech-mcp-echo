@@ -477,6 +477,8 @@ def voice_config(
     if stt_engine is not None:
         set_setting("stt", "engine", stt_engine)
         changes.append(f"STT engine: {stt_engine}")
+        if _engine is not None:
+            _engine.reset_stt()
 
     if stt_timeout is not None:
         set_setting("stt", "timeout", stt_timeout)
@@ -485,22 +487,45 @@ def voice_config(
     if tts_engine is not None:
         set_setting("tts", "engine", tts_engine)
         changes.append(f"TTS engine: {tts_engine}")
+        if _engine is not None:
+            _engine.reset_tts()
 
     if tts_voice is not None:
         set_setting("tts", "voice", tts_voice)
         changes.append(f"TTS voice: {tts_voice}")
+        # Auto-sync language from voice (e.g., "en-US-Standard-B" -> "en-US")
+        if "-" in tts_voice:
+            voice_lang = "-".join(tts_voice.split("-")[:2])
+            current_lang = get_setting("tts", "language")
+            if current_lang != voice_lang:
+                set_setting("tts", "language", voice_lang)
+                changes.append(f"TTS language auto-synced: {voice_lang}")
+        if _engine is not None:
+            _engine.reset_tts()
 
     if tts_language is not None:
         set_setting("tts", "language", tts_language)
         changes.append(f"TTS language: {tts_language}")
+        # Auto-sync voice to match language (use Standard-B as default)
+        current_voice = get_setting("tts", "voice", "")
+        if not current_voice.startswith(tts_language):
+            default_voice = f"{tts_language}-Standard-B"
+            set_setting("tts", "voice", default_voice)
+            changes.append(f"TTS voice auto-synced: {default_voice}")
+        if _engine is not None:
+            _engine.reset_tts()
 
     if summarizer_enabled is not None:
         set_setting("summarizer", "enabled", summarizer_enabled)
         changes.append(f"Summarizer: {'enabled' if summarizer_enabled else 'disabled'}")
+        if _engine is not None:
+            _engine.reset_summarizer()
 
     if summarizer_personality is not None:
         set_setting("summarizer", "personality", summarizer_personality)
         changes.append(f"Summarizer personality: {summarizer_personality}")
+        if _engine is not None:
+            _engine.reset_summarizer()
 
     config_summary = {
         "stt_engine": get_setting("stt", "engine"),

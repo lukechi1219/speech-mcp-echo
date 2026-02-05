@@ -200,3 +200,18 @@ class VoiceEngine:
         self._on_listening_end = on_listening_end
         self._on_speaking_start = on_speaking_start
         self._on_speaking_end = on_speaking_end
+
+    def reset_stt(self):
+        """Reset STT engine to reload with new configuration."""
+        self._stt_engine = None
+        logger.info("STT engine reset - will reload on next use")
+
+    def reset_tts(self):
+        """Reset TTS engine to reload with new configuration."""
+        self._tts_engine = None
+        logger.info("TTS engine reset - will reload on next use")
+
+    def reset_summarizer(self):
+        """Reset summarizer to reload with new configuration."""
+        self._summarizer = None
+        logger.info("Summarizer reset - will reload on next use")
