@@ -12,6 +12,69 @@
 - **雙語支援**：英文及中文（繁體/簡體）文字處理
 - **JARVIS 摘要器**：將冗長的回應濃縮成簡潔有趣的摘要
 
+## 快速開始
+
+### 安裝
+
+```bash
+# 含推薦依賴套件（faster-whisper、Google TTS、OpenAI TTS）
+pip install 'speech-mcp-echo[recommended] @ git+https://github.com/lukechi1219/speech-mcp-echo.git@v0.1.0'
+
+# 或基本安裝
+pip install git+https://github.com/lukechi1219/speech-mcp-echo.git@v0.1.0
+
+# 或從 wheel 安裝
+pip install https://github.com/lukechi1219/speech-mcp-echo/releases/download/v0.1.0/speech_mcp_echo-0.1.0-py3-none-any.whl
+```
+
+### CLI 整合
+
+#### Claude Code（主要目標）
+
+新增至 `~/.claude.json`：
+```json
+{
+  "mcpServers": {
+    "speech-mcp-echo": {
+      "command": "speech-mcp-echo"
+    }
+  }
+}
+```
+
+**選擇性**：在 `~/.claude/settings.json` 中自動核准語音工具，以避免確認提示：
+```json
+{
+  "permissions": {
+    "allow": [
+      "mcp__speech-mcp-echo__start_conversation",
+      "mcp__speech-mcp-echo__voice_listen",
+      "mcp__speech-mcp-echo__voice_speak",
+      "mcp__speech-mcp-echo__voice_reply",
+      "mcp__speech-mcp-echo__voice_config",
+      "mcp__speech-mcp-echo__voice_status"
+    ]
+  }
+}
+```
+
+然後重新啟動 Claude Code，並說：**「Let's have a voice conversation」**
+
+#### 其他 CLI
+
+**Goose CLI**：
+```bash
+goose session --with-extension "speech-mcp-echo"
+```
+
+**Gemini CLI**：新增至 `~/.gemini/settings.json`（格式同 Claude Code）
+
+**Codex CLI**：新增至 `~/.codex/config.toml`：
+```toml
+[mcp.servers.speech-mcp-echo]
+command = "speech-mcp-echo"
+```
+
 ## 為什麼選擇這些技術？
 
 ### STT：faster-whisper（推薦）

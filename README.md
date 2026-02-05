@@ -12,6 +12,69 @@ Voice interface for multiple AI CLIs - Claude Code, Gemini CLI, Codex CLI, and M
 - **Bilingual Support**: English and Chinese (Traditional/Simplified) text processing
 - **JARVIS Summarizer**: Condenses long responses into concise, entertaining summaries
 
+## Quick Start
+
+### Installation
+
+```bash
+# With recommended dependencies (faster-whisper, Google TTS, OpenAI TTS)
+pip install 'speech-mcp-echo[recommended] @ git+https://github.com/lukechi1219/speech-mcp-echo.git@v0.1.0'
+
+# Or basic installation
+pip install git+https://github.com/lukechi1219/speech-mcp-echo.git@v0.1.0
+
+# Or from wheel
+pip install https://github.com/lukechi1219/speech-mcp-echo/releases/download/v0.1.0/speech_mcp_echo-0.1.0-py3-none-any.whl
+```
+
+### CLI Integration
+
+#### Claude Code (Primary Target)
+
+Add to `~/.claude.json`:
+```json
+{
+  "mcpServers": {
+    "speech-mcp-echo": {
+      "command": "speech-mcp-echo"
+    }
+  }
+}
+```
+
+**Optional**: Auto-approve speech tools in `~/.claude/settings.json` to avoid confirmation prompts:
+```json
+{
+  "permissions": {
+    "allow": [
+      "mcp__speech-mcp-echo__start_conversation",
+      "mcp__speech-mcp-echo__voice_listen",
+      "mcp__speech-mcp-echo__voice_speak",
+      "mcp__speech-mcp-echo__voice_reply",
+      "mcp__speech-mcp-echo__voice_config",
+      "mcp__speech-mcp-echo__voice_status"
+    ]
+  }
+}
+```
+
+Then restart Claude Code and say: **"Let's have a voice conversation"**
+
+#### Other CLIs
+
+**Goose CLI**:
+```bash
+goose session --with-extension "speech-mcp-echo"
+```
+
+**Gemini CLI**: Add to `~/.gemini/settings.json` (same format as Claude Code)
+
+**Codex CLI**: Add to `~/.codex/config.toml`:
+```toml
+[mcp.servers.speech-mcp-echo]
+command = "speech-mcp-echo"
+```
+
 ## Why These Technology Choices?
 
 ### STT: faster-whisper (Recommended)
