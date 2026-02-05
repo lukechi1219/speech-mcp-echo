@@ -370,7 +370,7 @@ Then restart Gemini CLI.
 #### Codex CLI
 Add to `~/.codex/config.toml`:
 ```toml
-[mcp.servers.speech-mcp-echo]
+[mcp_servers.speech-mcp-echo]
 command = "speech-mcp-echo"
 ```
 Then restart Codex CLI.

@@ -160,13 +160,13 @@ setup_codex_cli() {
         # Backup existing config
         cp "$CONFIG_FILE" "$CONFIG_FILE.backup"
 
-        # Check if [mcp.servers.speech-mcp-echo] already exists
+        # Check if [mcp_servers.speech-mcp-echo] already exists
         if grep -q "\[mcp.servers.speech-mcp-echo\]" "$CONFIG_FILE"; then
             echo -e "${YELLOW}   speech-mcp-echo server already configured in $CONFIG_FILE${NC}"
         else
             # Append the MCP server config
             echo "" >> "$CONFIG_FILE"
-            echo "[mcp.servers.speech-mcp-echo]" >> "$CONFIG_FILE"
+            echo "[mcp_servers.speech-mcp-echo]" >> "$CONFIG_FILE"
             echo "command = \"$MCP_COMMAND\"" >> "$CONFIG_FILE"
             echo -e "✅ Codex CLI configured: $CONFIG_FILE"
         fi
@@ -175,7 +175,7 @@ setup_codex_cli() {
         cat > "$CONFIG_FILE" << TOML
 # Codex CLI Configuration
 
-[mcp.servers.speech-mcp-echo]
+[mcp_servers.speech-mcp-echo]
 command = "$MCP_COMMAND"
 TOML
         echo -e "✅ Codex CLI configured: $CONFIG_FILE"
