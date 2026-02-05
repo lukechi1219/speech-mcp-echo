@@ -1,13 +1,20 @@
 """
 Comprehensive tests for MCP server tools.
 
-Tests all 6 MCP tools provided by server.py:
+Tests all 9 MCP tools provided by server.py:
+
+Original (Blocking) Tools:
 1. start_conversation
 2. voice_listen
 3. voice_speak
 4. voice_reply
 5. voice_config
 6. voice_status
+
+New (Non-blocking Start/Poll) Tools:
+7. start_listening
+8. check_listening
+9. cancel_listening
 
 Each tool is tested with:
 - Success scenarios
@@ -74,6 +81,17 @@ def reset_server_engine():
     server._engine = None
     yield
     server._engine = None
+
+
+@pytest.fixture
+def reset_listening_sessions():
+    """Reset listening sessions between tests."""
+    from speech_mcp_echo import server
+    with server._session_lock:
+        server._listening_sessions.clear()
+    yield
+    with server._session_lock:
+        server._listening_sessions.clear()
 
 
 # =============================================================================
@@ -637,6 +655,339 @@ class TestVoiceStatus:
             result = voice_status()
 
             assert "Summarizer: Disabled" in result
+
+
+# =============================================================================
+# Test start_listening (Start/Poll Mode - Non-blocking)
+# =============================================================================
+
+class TestStartListening:
+    """Tests for start_listening MCP tool (non-blocking background listening)."""
+
+    def test_start_listening_returns_session_id(self, mock_voice_engine, reset_server_engine, reset_listening_sessions):
+        """Test start_listening returns a session ID immediately."""
+        from speech_mcp_echo.server import start_listening
+
+        with patch('speech_mcp_echo.server.get_engine', return_value=mock_voice_engine):
+            result = start_listening()
+
+            assert "Session ID:" in result
+            assert "check_listening" in result
+
+    def test_start_listening_creates_session(self, mock_voice_engine, reset_server_engine, reset_listening_sessions):
+        """Test start_listening creates a session in storage."""
+        from speech_mcp_echo.server import start_listening, _listening_sessions
+
+        with patch('speech_mcp_echo.server.get_engine', return_value=mock_voice_engine):
+            result = start_listening()
+
+            # Extract session ID from result
+            import re
+            match = re.search(r"Session ID: (\w+)", result)
+            assert match is not None
+            session_id = match.group(1)
+
+            # Session should exist
+            assert session_id in _listening_sessions
+
+    def test_start_listening_with_custom_retry_count(self, mock_voice_engine, reset_server_engine, reset_listening_sessions):
+        """Test start_listening with custom silence retry count."""
+        from speech_mcp_echo.server import start_listening, _listening_sessions
+
+        with patch('speech_mcp_echo.server.get_engine', return_value=mock_voice_engine):
+            result = start_listening(silence_retry_count=5)
+
+            assert "Max retries on silence: 5" in result
+
+    def test_start_listening_uses_config_default_retry(self, mock_voice_engine, reset_server_engine, reset_listening_sessions):
+        """Test start_listening uses config default for silence retry count."""
+        from speech_mcp_echo.server import start_listening
+        from speech_mcp_echo.config import set_setting
+
+        set_setting("stt", "silence_retry_count", 3)
+
+        with patch('speech_mcp_echo.server.get_engine', return_value=mock_voice_engine):
+            result = start_listening()
+
+            assert "Max retries on silence: 3" in result
+
+    def test_start_listening_is_non_blocking(self, mock_voice_engine, reset_server_engine, reset_listening_sessions):
+        """Test start_listening returns immediately without blocking."""
+        from speech_mcp_echo.server import start_listening
+
+        # Make listen block for a long time
+        def slow_listen(timeout=None):
+            time.sleep(10)
+            return "Test"
+
+        mock_voice_engine.listen.side_effect = slow_listen
+
+        with patch('speech_mcp_echo.server.get_engine', return_value=mock_voice_engine):
+            start_time = time.time()
+            result = start_listening()
+            elapsed = time.time() - start_time
+
+            # Should return immediately (< 1 second)
+            assert elapsed < 1.0
+            assert "Session ID:" in result
+
+
+# =============================================================================
+# Test check_listening (Start/Poll Mode - Status Check)
+# =============================================================================
+
+class TestCheckListening:
+    """Tests for check_listening MCP tool (poll for results)."""
+
+    def test_check_listening_session_not_found(self, reset_listening_sessions):
+        """Test check_listening with invalid session ID."""
+        from speech_mcp_echo.server import check_listening
+
+        result = check_listening("invalid123")
+
+        assert "ERROR" in result
+        assert "not found" in result
+
+    def test_check_listening_status_listening(self, mock_voice_engine, reset_server_engine, reset_listening_sessions):
+        """Test check_listening returns 'listening' status while active."""
+        from speech_mcp_echo.server import start_listening, check_listening
+
+        # Make listen block indefinitely
+        def blocking_listen(timeout=None):
+            time.sleep(100)
+            return "Test"
+
+        mock_voice_engine.listen.side_effect = blocking_listen
+
+        with patch('speech_mcp_echo.server.get_engine', return_value=mock_voice_engine):
+            result = start_listening()
+
+            import re
+            match = re.search(r"Session ID: (\w+)", result)
+            session_id = match.group(1)
+
+            # Check immediately - should be listening
+            time.sleep(0.1)  # Allow thread to start
+            status = check_listening(session_id)
+
+            assert "Status: listening" in status
+            assert "attempt" in status
+
+    def test_check_listening_status_completed(self, mock_voice_engine, reset_server_engine, reset_listening_sessions):
+        """Test check_listening returns 'completed' status with result."""
+        from speech_mcp_echo.server import start_listening, check_listening
+
+        # Make listen return immediately
+        mock_voice_engine.listen.return_value = "Hello from user"
+
+        with patch('speech_mcp_echo.server.get_engine', return_value=mock_voice_engine):
+            result = start_listening()
+
+            import re
+            match = re.search(r"Session ID: (\w+)", result)
+            session_id = match.group(1)
+
+            # Wait for background thread to complete
+            time.sleep(0.3)
+
+            status = check_listening(session_id)
+
+            assert "Status: completed" in status
+            assert "User said: Hello from user" in status
+
+    def test_check_listening_status_timeout(self, mock_voice_engine, reset_server_engine, reset_listening_sessions):
+        """Test check_listening returns 'timeout' status when retries exhausted."""
+        from speech_mcp_echo.server import start_listening, check_listening
+
+        # Make listen return empty (silence timeout)
+        mock_voice_engine.listen.return_value = ""
+
+        with patch('speech_mcp_echo.server.get_engine', return_value=mock_voice_engine):
+            with patch('speech_mcp_echo.server._play_retry_prompt'):  # Skip beep
+                result = start_listening(silence_retry_count=0)  # No retries
+
+                import re
+                match = re.search(r"Session ID: (\w+)", result)
+                session_id = match.group(1)
+
+                # Wait for background thread to complete
+                time.sleep(0.5)
+
+                status = check_listening(session_id)
+
+                assert "Status: timeout" in status
+
+    def test_check_listening_shows_retry_progress(self, mock_voice_engine, reset_server_engine, reset_listening_sessions):
+        """Test check_listening shows retry progress."""
+        from speech_mcp_echo.server import start_listening, check_listening, _listening_sessions
+
+        # Make listen take some time
+        call_count = [0]
+
+        def slow_listen(timeout=None):
+            call_count[0] += 1
+            time.sleep(0.5)
+            return ""  # Silence
+
+        mock_voice_engine.listen.side_effect = slow_listen
+
+        with patch('speech_mcp_echo.server.get_engine', return_value=mock_voice_engine):
+            with patch('speech_mcp_echo.server._play_retry_prompt'):
+                result = start_listening(silence_retry_count=3)
+
+                import re
+                match = re.search(r"Session ID: (\w+)", result)
+                session_id = match.group(1)
+
+                # Check after first attempt
+                time.sleep(0.6)
+                status = check_listening(session_id)
+
+                # Should show attempt progress
+                assert "attempt" in status
+
+
+# =============================================================================
+# Test cancel_listening (Start/Poll Mode - Cancellation)
+# =============================================================================
+
+class TestCancelListening:
+    """Tests for cancel_listening MCP tool."""
+
+    def test_cancel_listening_session_not_found(self, reset_listening_sessions):
+        """Test cancel_listening with invalid session ID."""
+        from speech_mcp_echo.server import cancel_listening
+
+        result = cancel_listening("invalid123")
+
+        assert "ERROR" in result
+        assert "not found" in result
+
+    def test_cancel_listening_active_session(self, mock_voice_engine, reset_server_engine, reset_listening_sessions):
+        """Test cancel_listening cancels an active session."""
+        from speech_mcp_echo.server import start_listening, cancel_listening, check_listening
+
+        # Make listen block
+        def blocking_listen(timeout=None):
+            time.sleep(100)
+            return "Test"
+
+        mock_voice_engine.listen.side_effect = blocking_listen
+
+        with patch('speech_mcp_echo.server.get_engine', return_value=mock_voice_engine):
+            result = start_listening()
+
+            import re
+            match = re.search(r"Session ID: (\w+)", result)
+            session_id = match.group(1)
+
+            # Cancel the session
+            time.sleep(0.1)
+            cancel_result = cancel_listening(session_id)
+
+            assert "cancelled" in cancel_result.lower()
+
+            # Check status should show cancelled
+            status = check_listening(session_id)
+            assert "cancelled" in status.lower()
+
+    def test_cancel_listening_already_completed(self, mock_voice_engine, reset_server_engine, reset_listening_sessions):
+        """Test cancel_listening on already completed session."""
+        from speech_mcp_echo.server import start_listening, cancel_listening
+
+        # Make listen return immediately
+        mock_voice_engine.listen.return_value = "Hello"
+
+        with patch('speech_mcp_echo.server.get_engine', return_value=mock_voice_engine):
+            result = start_listening()
+
+            import re
+            match = re.search(r"Session ID: (\w+)", result)
+            session_id = match.group(1)
+
+            # Wait for completion
+            time.sleep(0.3)
+
+            # Try to cancel
+            cancel_result = cancel_listening(session_id)
+
+            assert "already finished" in cancel_result
+            assert "completed" in cancel_result
+
+
+# =============================================================================
+# Test Background Listening Helper Functions
+# =============================================================================
+
+class TestBackgroundListeningHelpers:
+    """Tests for background listening helper functions."""
+
+    def test_cleanup_expired_sessions(self, reset_listening_sessions):
+        """Test expired session cleanup."""
+        from speech_mcp_echo.server import (
+            _listening_sessions,
+            _session_lock,
+            _cleanup_expired_sessions,
+            ListeningSession,
+            _SESSION_TTL_SECONDS,
+        )
+
+        # Create an old session
+        with _session_lock:
+            old_session = ListeningSession(
+                id="old123",
+                status="completed",
+                result="Test",
+            )
+            # Manually set old timestamp
+            old_session.created_at = time.time() - _SESSION_TTL_SECONDS - 100
+            _listening_sessions["old123"] = old_session
+
+            # Create a new session
+            new_session = ListeningSession(
+                id="new456",
+                status="completed",
+                result="Test",
+            )
+            _listening_sessions["new456"] = new_session
+
+        # Run cleanup
+        removed = _cleanup_expired_sessions()
+
+        assert removed == 1
+        assert "old123" not in _listening_sessions
+        assert "new456" in _listening_sessions
+
+    def test_play_retry_prompt_silent(self):
+        """Test silent retry prompt does nothing."""
+        from speech_mcp_echo.server import _play_retry_prompt
+
+        # Should not raise
+        _play_retry_prompt("silent")
+
+    def test_play_retry_prompt_beep_macos(self):
+        """Test beep retry prompt on macOS."""
+        from speech_mcp_echo.server import _play_retry_prompt
+
+        with patch('speech_mcp_echo.server.sys.platform', 'darwin'):
+            with patch('speech_mcp_echo.server.subprocess.Popen') as mock_popen:
+                _play_retry_prompt("beep")
+
+                mock_popen.assert_called_once()
+                args = mock_popen.call_args[0][0]
+                assert "afplay" in args
+                assert "Tink.aiff" in args[1]
+
+    def test_play_retry_prompt_voice(self, mock_voice_engine, reset_server_engine):
+        """Test voice retry prompt uses TTS."""
+        from speech_mcp_echo.server import _play_retry_prompt
+
+        with patch('speech_mcp_echo.server.get_engine', return_value=mock_voice_engine):
+            _play_retry_prompt("voice")
+
+            mock_voice_engine.speak.assert_called_once()
+            args, kwargs = mock_voice_engine.speak.call_args
+            assert "listening" in args[0].lower() or kwargs.get('summarize') is False
 
 
 # =============================================================================

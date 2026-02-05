@@ -26,6 +26,8 @@ DEFAULT_CONFIG = {
         "compute_type": "int8",
         "language": "auto",  # Language code: auto, en, zh, ja, etc. "auto" detects language
         "timeout": 45,  # Audio recording timeout in seconds (safe for most CLIs)
+        "silence_retry_count": 10,  # Retries when silence timeout (0 = no retry, ~15min tolerance)
+        "retry_prompt_type": "beep",  # Prompt on retry: beep, voice, silent
         # API keys read from environment by default
     },
     "tts": {

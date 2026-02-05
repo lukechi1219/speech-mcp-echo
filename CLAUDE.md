@@ -168,7 +168,9 @@ Config file: `~/.config/speech-mcp-echo/config.json`
     "engine": "faster-whisper",
     "model": "base",
     "device": "cpu",
-    "timeout": 45  // Audio recording timeout in seconds (default: 45)
+    "timeout": 45,  // Audio recording timeout in seconds (default: 45)
+    "silence_retry_count": 10,  // Retries on silence (default: 10, ~7.5 min tolerance)
+    "retry_prompt_type": "beep"  // Prompt type: "beep", "voice", "silent"
   },
   "tts": {
     "engine": "google",  // Options: "google", "openai"
@@ -382,6 +384,8 @@ goose session --with-extension "speech-mcp-echo"
 
 ## Available MCP Tools
 
+### Blocking Mode (Original)
+
 | Tool | Description | Parameters |
 |------|-------------|------------|
 | `start_conversation` | Start a voice conversation (use when user says "let's talk") | `timeout` (optional, int) |
@@ -391,9 +395,24 @@ goose session --with-extension "speech-mcp-echo"
 | `voice_config` | Configure STT, TTS, and summarizer settings | `stt_engine`, `stt_timeout`, `tts_engine`, `tts_voice`, `tts_language`, `summarizer_enabled`, `summarizer_personality` |
 | `voice_status` | Get voice system status and detected CLI | None |
 
+### Non-blocking Start/Poll Mode (New in v0.2.0)
+
+| Tool | Description | Parameters |
+|------|-------------|------------|
+| `start_listening` | Start background listening, returns session ID immediately | `timeout` (optional), `silence_retry_count` (optional) |
+| `check_listening` | Check status of a listening session | `session_id` (required) |
+| `cancel_listening` | Cancel an active listening session | `session_id` (required) |
+
+**Non-blocking mode benefits:**
+- AI can continue processing while listening runs in background
+- Automatic retry on silence (plays beep prompt)
+- Configurable retry count (default: 10 retries ≈ 7.5 minutes tolerance)
+
 **Timeout Parameter:** All listening tools accept an optional `timeout` parameter (in seconds) to override the configured default (45s). This is useful for CLIs with different MCP timeout constraints.
 
-## Voice Conversation Flow
+## Voice Conversation Flows
+
+### Blocking Flow (Original)
 
 ```
 User: "Let's have a voice conversation"
@@ -413,3 +432,38 @@ AI processes, then calls: voice_reply("response", wait=True)
                 ▼
 AI calls: voice_reply("Goodbye!", wait=False)  ──► Ends conversation
 ```
+
+### Non-blocking Start/Poll Flow (Recommended)
+
+```
+User: "Let's have a voice conversation"
+                │
+                ▼
+AI calls: start_listening()  ──► Returns session ID immediately
+                │                (listening continues in background)
+                ▼
+AI can do other tasks...
+                │
+                ▼
+AI calls: check_listening(session_id)
+                │
+      ┌─────────┴─────────┐
+      ▼                   ▼
+"listening"          "completed"
+(check again)        (got user speech!)
+                          │
+                          ▼
+             AI processes and responds via voice_speak()
+                          │
+                          ▼
+             AI calls: start_listening() ──► next round
+                          │
+                          ▼
+             [Repeat until user says "goodbye" or timeout]
+```
+
+**Silence Handling:**
+When user is silent, the system automatically:
+1. Plays a subtle beep (Tink.aiff on macOS)
+2. Retries listening (up to `silence_retry_count` times)
+3. Only returns "timeout" status after all retries exhausted

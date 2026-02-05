@@ -8,10 +8,20 @@ Provides voice interaction capabilities for any MCP-compatible CLI:
 - Goose CLI
 
 All CLIs connect to the same MCP server since they all support MCP natively.
+
+Continuous Listening Feature (v0.2.0):
+- Start/Poll mode for non-blocking voice conversations
+- Automatic retry on silence with configurable prompts
+- Session-based background listening
 """
 
 import logging
+import subprocess
+import sys
+import threading
 import time
+import uuid
+from dataclasses import dataclass, field
 from typing import Optional
 
 from mcp.server.fastmcp import FastMCP
@@ -27,6 +37,32 @@ mcp = FastMCP("speech-mcp-echo")
 _engine: Optional[VoiceEngine] = None
 
 
+# =============================================================================
+# Background Listening Session Management (Start/Poll Mode)
+# =============================================================================
+
+
+@dataclass
+class ListeningSession:
+    """Represents a background listening session."""
+
+    id: str
+    status: str  # "listening", "completed", "timeout", "error", "cancelled"
+    result: str = ""
+    retry_count: int = 0
+    max_retries: int = 10
+    error_message: str = ""
+    created_at: float = field(default_factory=time.time)
+
+
+# Global session storage with thread safety
+_listening_sessions: dict[str, ListeningSession] = {}
+_session_lock = threading.Lock()
+
+# Session cleanup threshold (30 minutes)
+_SESSION_TTL_SECONDS = 1800
+
+
 def get_engine() -> VoiceEngine:
     """Get or create the voice engine singleton."""
     global _engine
@@ -34,6 +70,249 @@ def get_engine() -> VoiceEngine:
         _engine = VoiceEngine()
         logger.info("VoiceEngine initialized")
     return _engine
+
+
+def _cleanup_expired_sessions() -> int:
+    """Remove sessions older than TTL. Returns count of removed sessions."""
+    now = time.time()
+    expired = []
+    with _session_lock:
+        for session_id, session in _listening_sessions.items():
+            if now - session.created_at > _SESSION_TTL_SECONDS:
+                expired.append(session_id)
+        for session_id in expired:
+            del _listening_sessions[session_id]
+    if expired:
+        logger.info(f"Cleaned up {len(expired)} expired listening sessions")
+    return len(expired)
+
+
+def _play_retry_prompt(prompt_type: str) -> None:
+    """Play a retry prompt to indicate the system is still listening."""
+    if prompt_type == "silent":
+        return
+
+    if prompt_type == "beep" and sys.platform == "darwin":
+        # macOS system sound - non-blocking
+        subprocess.Popen(
+            ["afplay", "/System/Library/Sounds/Tink.aiff"],
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+        )
+    elif prompt_type == "voice":
+        # Use TTS for voice prompt (blocking but short)
+        try:
+            engine = get_engine()
+            engine.speak("Still listening...", summarize=False)
+        except Exception as e:
+            logger.warning(f"Voice prompt failed: {e}")
+
+
+def _background_listen(session_id: str, timeout: Optional[int]) -> None:
+    """Background thread: listen with automatic retry on silence."""
+    engine = get_engine()
+    prompt_type = get_setting("stt", "retry_prompt_type", default="beep")
+
+    with _session_lock:
+        session = _listening_sessions.get(session_id)
+        if not session:
+            return
+
+    for attempt in range(session.max_retries + 1):
+        # Check if session was cancelled
+        with _session_lock:
+            current_session = _listening_sessions.get(session_id)
+            if not current_session or current_session.status == "cancelled":
+                logger.info(f"Session {session_id} was cancelled")
+                return
+
+        # Update retry count
+        with _session_lock:
+            if session_id in _listening_sessions:
+                _listening_sessions[session_id].retry_count = attempt
+
+        # Listen for speech
+        try:
+            result = engine.listen(timeout=timeout)
+
+            if result and result.strip():
+                with _session_lock:
+                    if session_id in _listening_sessions:
+                        _listening_sessions[session_id].status = "completed"
+                        _listening_sessions[session_id].result = result
+                logger.info(f"Session {session_id}: got speech on attempt {attempt + 1}")
+                return
+        except Exception as e:
+            logger.error(f"Session {session_id}: listen error - {e}")
+            with _session_lock:
+                if session_id in _listening_sessions:
+                    _listening_sessions[session_id].status = "error"
+                    _listening_sessions[session_id].error_message = str(e)
+            return
+
+        # No speech detected, play prompt and retry
+        if attempt < session.max_retries:
+            logger.info(
+                f"Session {session_id}: silence timeout, retry {attempt + 1}/{session.max_retries}"
+            )
+            _play_retry_prompt(prompt_type)
+            time.sleep(0.3)  # Brief pause before retry
+
+    # All retries exhausted
+    with _session_lock:
+        if session_id in _listening_sessions:
+            _listening_sessions[session_id].status = "timeout"
+    logger.info(f"Session {session_id}: all retries exhausted")
+
+
+# =============================================================================
+# MCP Tools - Start/Poll Mode (Non-blocking for Claude Code)
+# =============================================================================
+
+
+@mcp.tool()
+def start_listening(
+    timeout: Optional[int] = None,
+    silence_retry_count: Optional[int] = None,
+) -> str:
+    """
+    Start background listening and return immediately with a session ID.
+
+    ⚡ NON-BLOCKING: This tool returns immediately while listening continues
+    in the background. Use check_listening() to poll for results.
+
+    Recommended workflow:
+    1. Call start_listening() → get session_id
+    2. Continue other tasks (respond to user, process code, etc.)
+    3. Periodically call check_listening(session_id) to check status
+    4. When status is "completed", process the user's speech
+
+    The system automatically retries when silence is detected, playing a
+    subtle beep to indicate it's still listening. This allows continuous
+    voice conversations without blocking the CLI.
+
+    Args:
+        timeout: Timeout per listen attempt in seconds (default: 45)
+        silence_retry_count: Number of silence retries (default: 10, ~7.5 min tolerance)
+
+    Returns:
+        A message containing the session_id for use with check_listening()
+    """
+    # Cleanup old sessions periodically
+    _cleanup_expired_sessions()
+
+    session_id = str(uuid.uuid4())[:8]
+
+    if silence_retry_count is None:
+        silence_retry_count = get_setting("stt", "silence_retry_count", default=10)
+
+    session = ListeningSession(
+        id=session_id,
+        status="listening",
+        max_retries=silence_retry_count,
+    )
+
+    with _session_lock:
+        _listening_sessions[session_id] = session
+
+    # Start background listening thread
+    thread = threading.Thread(
+        target=_background_listen,
+        args=(session_id, timeout),
+        daemon=True,
+    )
+    thread.start()
+
+    logger.info(f"Started listening session {session_id} with {silence_retry_count} retries")
+
+    return (
+        f"Listening started. Session ID: {session_id}\n"
+        f"Use check_listening('{session_id}') to get results.\n"
+        f"Max retries on silence: {silence_retry_count}"
+    )
+
+
+@mcp.tool()
+def check_listening(session_id: str) -> str:
+    """
+    Check the status and result of a background listening session.
+
+    Status meanings:
+    - "listening": Still listening, check again later
+    - "completed": Speech detected! The result contains the transcription
+    - "timeout": All retries exhausted, no speech detected
+    - "error": An error occurred during listening
+    - "cancelled": Session was cancelled
+
+    Recommended actions based on status:
+    - "listening" → Continue other tasks, check again in a few seconds
+    - "completed" → Parse "User said: ..." and respond to the user
+    - "timeout" → Ask if user is still there, or end conversation
+    - "error" → Handle the error, possibly restart listening
+
+    Args:
+        session_id: The session ID from start_listening()
+
+    Returns:
+        Status and result of the listening session
+    """
+    with _session_lock:
+        session = _listening_sessions.get(session_id)
+
+    if not session:
+        return f"ERROR: Session '{session_id}' not found. It may have expired or never existed."
+
+    if session.status == "listening":
+        return (
+            f"Status: listening (attempt {session.retry_count + 1}/{session.max_retries + 1})\n"
+            "Still waiting for speech..."
+        )
+    elif session.status == "completed":
+        return f"Status: completed\nUser said: {session.result}"
+    elif session.status == "timeout":
+        return (
+            "Status: timeout\n"
+            f"No speech detected after {session.max_retries + 1} attempts.\n"
+            "The user may have left or is thinking."
+        )
+    elif session.status == "error":
+        return f"Status: error\nError: {session.error_message}"
+    elif session.status == "cancelled":
+        return "Status: cancelled\nThe session was cancelled."
+    else:
+        return f"Status: {session.status}"
+
+
+@mcp.tool()
+def cancel_listening(session_id: str) -> str:
+    """
+    Cancel a background listening session.
+
+    Use this to stop a listening session before it completes,
+    for example when the user types instead of speaking.
+
+    Args:
+        session_id: The session ID from start_listening()
+
+    Returns:
+        Confirmation of cancellation
+    """
+    with _session_lock:
+        session = _listening_sessions.get(session_id)
+        if not session:
+            return f"ERROR: Session '{session_id}' not found."
+
+        if session.status == "listening":
+            session.status = "cancelled"
+            logger.info(f"Session {session_id} cancelled by user")
+            return f"Session {session_id} cancelled."
+        else:
+            return f"Session {session_id} already finished with status: {session.status}"
+
+
+# =============================================================================
+# MCP Tools - Original Blocking Mode (Preserved for Compatibility)
+# =============================================================================
 
 
 @mcp.tool()
