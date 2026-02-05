@@ -348,7 +348,10 @@ Add to `~/.claude/settings.json` under `permissions.allow`:
       "mcp__speech-mcp-echo__voice_speak",
       "mcp__speech-mcp-echo__voice_reply",
       "mcp__speech-mcp-echo__voice_config",
-      "mcp__speech-mcp-echo__voice_status"
+      "mcp__speech-mcp-echo__voice_status",
+      "mcp__speech-mcp-echo__start_listening",
+      "mcp__speech-mcp-echo__check_listening",
+      "mcp__speech-mcp-echo__cancel_listening"
     ]
   }
 }

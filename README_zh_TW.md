@@ -7,6 +7,7 @@
 ## 功能特色
 
 - **多 CLI 支援**：支援 Claude Code、Gemini CLI、Codex CLI 及任何 MCP 相容工具
+- **持續聆聽** *(v0.2.0 新功能)*：非阻塞式背景聆聽，靜默時自動重試
 - **可設定的 STT**：本地端 (faster-whisper) 或雲端 (OpenAI Whisper、Google Speech)
 - **可設定的 TTS**：本地端 (pyttsx3) 或雲端 (Google Cloud TTS、OpenAI TTS)
 - **雙語支援**：英文及中文（繁體/簡體）文字處理
@@ -52,7 +53,10 @@ pip install https://github.com/lukechi1219/speech-mcp-echo/releases/download/v0.
       "mcp__speech-mcp-echo__voice_speak",
       "mcp__speech-mcp-echo__voice_reply",
       "mcp__speech-mcp-echo__voice_config",
-      "mcp__speech-mcp-echo__voice_status"
+      "mcp__speech-mcp-echo__voice_status",
+      "mcp__speech-mcp-echo__start_listening",
+      "mcp__speech-mcp-echo__check_listening",
+      "mcp__speech-mcp-echo__cancel_listening"
     ]
   }
 }

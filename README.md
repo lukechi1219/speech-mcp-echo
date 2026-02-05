@@ -7,6 +7,7 @@ Voice interface for multiple AI CLIs - Claude Code, Gemini CLI, Codex CLI, and M
 ## Features
 
 - **Multi-CLI Support**: Works with Claude Code, Gemini CLI, Codex CLI, and any MCP-compatible tool
+- **Continuous Listening** *(New in v0.2.0)*: Non-blocking background listening with automatic retry on silence
 - **Configurable STT**: Local (faster-whisper) or cloud (OpenAI Whisper, Google Speech)
 - **Configurable TTS**: Local (pyttsx3) or cloud (Google Cloud TTS, OpenAI TTS)
 - **Bilingual Support**: English and Chinese (Traditional/Simplified) text processing
@@ -52,7 +53,10 @@ Add to `~/.claude.json`:
       "mcp__speech-mcp-echo__voice_speak",
       "mcp__speech-mcp-echo__voice_reply",
       "mcp__speech-mcp-echo__voice_config",
-      "mcp__speech-mcp-echo__voice_status"
+      "mcp__speech-mcp-echo__voice_status",
+      "mcp__speech-mcp-echo__start_listening",
+      "mcp__speech-mcp-echo__check_listening",
+      "mcp__speech-mcp-echo__cancel_listening"
     ]
   }
 }
@@ -225,10 +229,19 @@ Add to your Claude Code MCP configuration (`~/.claude.json`):
 ```
 
 Then in Claude Code, you can use:
+
+**Blocking Mode** (simple, sequential):
 - `start_conversation` - Start a voice conversation
 - `voice_listen` - Listen for voice input
 - `voice_speak` - Speak text using TTS
 - `voice_reply` - Speak and wait for response
+
+**Non-blocking Mode** (recommended for continuous conversations):
+- `start_listening` - Start background listening, returns session ID immediately
+- `check_listening` - Poll for listening status/results
+- `cancel_listening` - Cancel an active listening session
+
+**Configuration**:
 - `voice_config` - Configure voice settings
 - `voice_status` - Check voice system status
 
@@ -249,7 +262,10 @@ Configuration is stored at `~/.config/speech-mcp-echo/config.json`:
     "engine": "faster-whisper",
     "model": "base",
     "device": "cpu",
-    "compute_type": "int8"
+    "compute_type": "int8",
+    "timeout": 45,
+    "silence_retry_count": 10,
+    "retry_prompt_type": "beep"
   },
   "tts": {
     "engine": "google",
@@ -262,6 +278,15 @@ Configuration is stored at `~/.config/speech-mcp-echo/config.json`:
     "language": "en"
   }
 }
+```
+
+### Continuous Listening Settings
+
+| Setting | Default | Description |
+|---------|---------|-------------|
+| `stt.timeout` | 45 | Seconds to wait for speech per attempt |
+| `stt.silence_retry_count` | 10 | Retries when silence detected (~7.5 min tolerance) |
+| `stt.retry_prompt_type` | "beep" | Prompt on retry: "beep", "voice", or "silent" |
 ```
 
 ### Supported Languages
