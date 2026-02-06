@@ -212,6 +212,22 @@ voice_config(stt_timeout=30)
 start_conversation(timeout=60)
 ```
 
+### Silence Detection Parameters
+
+The system uses silence detection to automatically stop recording when the user stops speaking. These are compile-time constants in `constants.py`:
+
+| Parameter | Value | Description |
+|-----------|-------|-------------|
+| `SILENCE_THRESHOLD` | 0.02 | Amplitude threshold (0-1 range, ~2% of max) |
+| `MAX_SILENCE_DURATION` | 5.0 sec | Stop recording after this much continuous silence |
+| `SILENCE_CHECK_INTERVAL` | 0.5 sec | How often to check audio level |
+
+**How it works:**
+1. Audio is recorded continuously
+2. Every 0.5 seconds, the system checks the audio amplitude
+3. If amplitude stays below 0.02 for 5 consecutive seconds, recording stops
+4. If user speaks again during the 5-second window, the timer resets
+
 ## Google Cloud TTS Authentication
 
 The adapter supports three methods (auto-detected in order):
