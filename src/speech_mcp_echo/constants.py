@@ -47,9 +47,9 @@ ENV_STT_ENGINE = "SPEECH_MCP_ECHO_STT_ENGINE"
 DEFAULT_CONFIG = {
     'tts': {
         'engine': 'google',  # Changed default to Google Cloud TTS
-        'voice': 'en-US-Journey-D',
+        'voice': 'cmn-TW-Standard-B',
         'speed': 1.0,
-        'lang_code': 'en-US'
+        'lang_code': 'cmn-TW'
     },
     'stt': {
         'engine': 'faster-whisper',
