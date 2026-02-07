@@ -269,9 +269,6 @@ class AudioProcessor:
             silence_duration = 0
             # Number of recent frames to average for silence detection
             frames_to_average = max(1, int(SILENCE_CHECK_INTERVAL * RATE / CHUNK))
-            logger.debug(f"Silence detection: threshold={SILENCE_THRESHOLD}, "
-                        f"max_duration={MAX_SILENCE_DURATION}s, "
-                        f"frames_to_average={frames_to_average}")
 
             while self.is_listening and self.stream and silence_duration < MAX_SILENCE_DURATION:
                 if not self.audio_frames or len(self.audio_frames) < 2:
@@ -285,11 +282,6 @@ class AudioProcessor:
                 )
                 normalized = combined_data.astype(float) / 32768.0
                 current_amplitude = np.abs(normalized).mean()
-
-                logger.debug(f"Silence detection: amplitude={current_amplitude:.6f}, "
-                           f"threshold={SILENCE_THRESHOLD}, "
-                           f"silence_duration={silence_duration:.1f}s/{MAX_SILENCE_DURATION}s, "
-                           f"frames_averaged={len(recent_frames)}")
 
                 if current_amplitude < SILENCE_THRESHOLD:
                     silence_duration += SILENCE_CHECK_INTERVAL

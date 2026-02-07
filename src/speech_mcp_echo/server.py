@@ -31,7 +31,7 @@ from speech_mcp_echo.config import get_setting, set_setting, load_config
 from speech_mcp_echo.utils.logger import setup_logging
 
 # Initialize file logging before any logger is created
-setup_logging(level=logging.DEBUG)
+setup_logging(level=logging.INFO)
 
 logger = logging.getLogger(__name__)
 
