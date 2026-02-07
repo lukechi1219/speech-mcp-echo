@@ -28,6 +28,10 @@ from mcp.server.fastmcp import FastMCP
 
 from speech_mcp_echo.core.voice_engine import VoiceEngine
 from speech_mcp_echo.config import get_setting, set_setting, load_config
+from speech_mcp_echo.utils.logger import setup_logging
+
+# Initialize file logging before any logger is created
+setup_logging(level=logging.DEBUG)
 
 logger = logging.getLogger(__name__)
 

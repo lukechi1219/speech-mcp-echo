@@ -76,7 +76,7 @@ CMD_UI_READY = "UI_READY"
 CMD_UI_CLOSED = "UI_CLOSED"
 
 # Speech recognition parameters
-SILENCE_THRESHOLD = 0.02  # Threshold for detecting silence (higher = less sensitive)
+SILENCE_THRESHOLD = 0.003  # Threshold for detecting silence (higher = less sensitive)
 MAX_SILENCE_DURATION = 5.0  # 5 seconds of silence to stop recording
 SILENCE_CHECK_INTERVAL = 0.5  # Check every 500ms
 SPEECH_TIMEOUT = 600  # 10 minutes timeout for speech recognition
