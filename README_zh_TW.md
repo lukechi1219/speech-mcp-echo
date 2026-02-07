@@ -18,14 +18,11 @@
 ### 安裝
 
 ```bash
-# 含推薦依賴套件（faster-whisper、Google TTS、OpenAI TTS）
-pip install 'speech-mcp-echo[recommended] @ git+https://github.com/lukechi1219/speech-mcp-echo.git@v0.2.0'
-
-# 或基本安裝
-pip install git+https://github.com/lukechi1219/speech-mcp-echo.git@v0.2.0
+# 從 git 安裝（推薦）
+pip install 'speech-mcp-echo[recommended] @ git+https://github.com/lukechi1219/speech-mcp-echo.git@v0.2.1'
 
 # 或從 wheel 安裝
-pip install https://github.com/lukechi1219/speech-mcp-echo/releases/download/v0.2.0/speech_mcp_echo-0.2.0-py3-none-any.whl
+pip install 'speech-mcp-echo[recommended] @ https://github.com/lukechi1219/speech-mcp-echo/releases/download/v0.2.1/speech_mcp_echo-0.2.1-py3-none-any.whl'
 ```
 
 ### CLI 整合
@@ -150,98 +147,6 @@ Kokoro 是優秀的本地 TTS 引擎，但它需要：
 - 額外的語言模型（misaki）
 
 對大多數使用者來說，Google Cloud TTS 以更簡單的設定提供更好的品質。Kokoro 仍可作為偏好完全離線運作的使用者的選擇。
-
-## 安裝
-
-### 先決條件
-
-```bash
-# macOS - 安裝 PortAudio 以進行音訊擷取
-brew install portaudio
-
-# 對於 Google Cloud TTS - 安裝並設定 gcloud CLI
-brew install google-cloud-sdk
-gcloud auth login
-gcloud config set project YOUR_PROJECT_ID
-```
-
-### 推薦安裝方式
-
-我們建議**不含** Kokoro/PyTorch 的安裝以保持輕量：
-
-```bash
-# 複製儲存庫
-git clone https://github.com/lukechi1219/speech-mcp-echo.git
-cd speech-mcp-echo
-
-# 安裝核心依賴（推薦）
-pip install -e .
-
-# 或安裝特定功能
-pip install -e ".[local-stt]"  # 加入 faster-whisper
-pip install -e ".[cloud]"      # 加入雲端 API 用戶端
-```
-
-### 手動安裝（僅核心套件）
-
-```bash
-# 必要套件
-pip install pyaudio numpy soundfile psutil
-
-# STT：faster-whisper（推薦）
-pip install faster-whisper numba
-
-# MCP 支援
-pip install "mcp[cli]>=1.2.0" "pydantic>=2.7.2,<3.0.0"
-
-# 選用：雲端 API 用戶端（如果使用 OpenAI 服務）
-pip install openai
-```
-
-### 選用：使用 Kokoro 的本地 TTS
-
-僅在需要完全離線 TTS 時安裝：
-
-```bash
-# 警告：這會下載約 2GB 的 PyTorch
-pip install torch kokoro pyttsx3
-
-# 語言支援
-pip install "misaki[en]"  # 英文
-pip install "misaki[zh]"  # 中文
-pip install "misaki[ja]"  # 日文
-```
-
-## 快速開始
-
-### 搭配 Claude Code
-
-將以下內容加入您的 Claude Code MCP 設定檔（`~/.claude.json`）：
-
-```json
-{
-  "mcpServers": {
-    "speech-mcp-echo": {
-      "command": "speech-mcp-echo"
-    }
-  }
-}
-```
-
-然後在 Claude Code 中，您可以使用：
-- `start_conversation` - 開始語音對話
-- `voice_listen` - 聆聽語音輸入
-- `voice_speak` - 使用 TTS 朗讀文字
-- `voice_reply` - 朗讀並等待回應
-- `voice_config` - 設定語音選項
-- `voice_status` - 檢查語音系統狀態
-
-### 獨立執行
-
-```bash
-# 作為 MCP 伺服器執行（適用於所有 MCP 相容的 CLI）
-speech-mcp-echo
-```
 
 ## 設定
 

@@ -37,7 +37,7 @@ source .venv/bin/activate
 | Package | Version |
 |---------|---------|
 | Python | 3.13 |
-| speech-mcp-echo | 0.1.0 (editable) |
+| speech-mcp-echo | 0.2.1 (editable) |
 | faster-whisper | 1.2.1 |
 | mcp | 1.26.0 |
 | PyQt5 | 5.15.11 |
@@ -218,14 +218,14 @@ The system uses silence detection to automatically stop recording when the user 
 
 | Parameter | Value | Description |
 |-----------|-------|-------------|
-| `SILENCE_THRESHOLD` | 0.02 | Amplitude threshold (0-1 range, ~2% of max) |
+| `SILENCE_THRESHOLD` | 0.003 | Amplitude threshold (0-1 range, ~0.3% of max) |
 | `MAX_SILENCE_DURATION` | 5.0 sec | Stop recording after this much continuous silence |
 | `SILENCE_CHECK_INTERVAL` | 0.5 sec | How often to check audio level |
 
 **How it works:**
 1. Audio is recorded continuously
 2. Every 0.5 seconds, the system checks the audio amplitude
-3. If amplitude stays below 0.02 for 5 consecutive seconds, recording stops
+3. If amplitude stays below 0.003 for 5 consecutive seconds, recording stops
 4. If user speaks again during the 5-second window, the timer resets
 
 ## Google Cloud TTS Authentication
@@ -486,3 +486,37 @@ When user is silent, the system automatically:
 1. Plays a subtle beep (Tink.aiff on macOS)
 2. Retries listening (up to `silence_retry_count` times)
 3. Only returns "timeout" status after all retries exhausted
+
+## Publishing & Installation
+
+### Current Publish Method
+
+Publish via **GitHub Release** using `gh` CLI:
+
+```bash
+# 1. Bump version in pyproject.toml
+# 2. Commit and push
+# 3. Create GitHub release
+gh release create v0.X.Y --title "v0.X.Y - Title" --notes "Release notes..."
+```
+
+### User Installation (from README Quick Start)
+
+Both methods install with `[recommended]` dependencies (faster-whisper, local-tts-light, mcp):
+
+```bash
+# From git tag
+pip install 'speech-mcp-echo[recommended] @ git+https://github.com/lukechi1219/speech-mcp-echo.git@vX.Y.Z'
+
+# From wheel (if attached to release)
+pip install 'speech-mcp-echo[recommended] @ https://github.com/lukechi1219/speech-mcp-echo/releases/download/vX.Y.Z/speech_mcp_echo-X.Y.Z-py3-none-any.whl'
+```
+
+### Release Checklist
+
+When creating a new release, update version numbers in these files:
+
+1. `pyproject.toml` — `version = "X.Y.Z"`
+2. `README.md` — installation URLs (git tag + whl)
+3. `README_zh_TW.md` — installation URLs (git tag + whl)
+4. `CLAUDE.md` — version in Current Versions table

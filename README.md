@@ -18,14 +18,11 @@ Voice interface for multiple AI CLIs - Claude Code, Gemini CLI, Codex CLI, and M
 ### Installation
 
 ```bash
-# With recommended dependencies (faster-whisper, Google TTS, OpenAI TTS)
-pip install 'speech-mcp-echo[recommended] @ git+https://github.com/lukechi1219/speech-mcp-echo.git@v0.2.0'
-
-# Or basic installation
-pip install git+https://github.com/lukechi1219/speech-mcp-echo.git@v0.2.0
+# From git (recommended)
+pip install 'speech-mcp-echo[recommended] @ git+https://github.com/lukechi1219/speech-mcp-echo.git@v0.2.1'
 
 # Or from wheel
-pip install https://github.com/lukechi1219/speech-mcp-echo/releases/download/v0.2.0/speech_mcp_echo-0.2.0-py3-none-any.whl
+pip install 'speech-mcp-echo[recommended] @ https://github.com/lukechi1219/speech-mcp-echo/releases/download/v0.2.1/speech_mcp_echo-0.2.1-py3-none-any.whl'
 ```
 
 ### CLI Integration
@@ -150,107 +147,6 @@ Kokoro is an excellent local TTS engine, but it requires:
 - Additional language models (misaki)
 
 For most users, Google Cloud TTS provides better quality with simpler setup. Kokoro remains available as an optional local alternative for users who prefer fully offline operation.
-
-## Installation
-
-### Prerequisites
-
-```bash
-# macOS - Install PortAudio for audio capture
-brew install portaudio
-
-# For Google Cloud TTS - Install and configure gcloud CLI
-brew install google-cloud-sdk
-gcloud auth login
-gcloud config set project YOUR_PROJECT_ID
-```
-
-### Recommended Installation
-
-We recommend installing **without** Kokoro/PyTorch to keep the installation lightweight:
-
-```bash
-# Clone the repository
-git clone https://github.com/lukechi1219/speech-mcp-echo.git
-cd speech-mcp-echo
-
-# Install core dependencies (recommended)
-pip install -e .
-
-# Or install specific features
-pip install -e ".[local-stt]"  # Add faster-whisper
-pip install -e ".[cloud]"      # Add cloud API clients
-```
-
-### Manual Installation (Core packages only)
-
-```bash
-# Essential packages
-pip install pyaudio numpy soundfile psutil
-
-# STT: faster-whisper (recommended)
-pip install faster-whisper numba
-
-# MCP support
-pip install "mcp[cli]>=1.2.0" "pydantic>=2.7.2,<3.0.0"
-
-# Optional: Cloud API clients (if using OpenAI services)
-pip install openai
-```
-
-### Optional: Local TTS with Kokoro
-
-Only install if you need fully offline TTS:
-
-```bash
-# Warning: This downloads ~2GB of PyTorch
-pip install torch kokoro pyttsx3
-
-# Language support
-pip install "misaki[en]"  # English
-pip install "misaki[zh]"  # Chinese
-pip install "misaki[ja]"  # Japanese
-```
-
-## Quick Start
-
-### With Claude Code
-
-Add to your Claude Code MCP configuration (`~/.claude.json`):
-
-```json
-{
-  "mcpServers": {
-    "speech-mcp-echo": {
-      "command": "speech-mcp-echo"
-    }
-  }
-}
-```
-
-Then in Claude Code, you can use:
-
-**Blocking Mode** (simple, sequential):
-- `start_conversation` - Start a voice conversation
-- `voice_listen` - Listen for voice input
-- `voice_speak` - Speak text using TTS
-- `voice_reply` - Speak and wait for response
-
-**Non-blocking Mode** (recommended for continuous conversations):
-- `start_listening` - Start background listening, returns session ID immediately
-- `check_listening` - Poll for listening status/results
-- `cancel_listening` - Cancel an active listening session
-
-**Configuration**:
-- `voice_config` - Configure voice settings
-- `voice_status` - Check voice system status
-
-### Standalone
-
-```bash
-# Run as MCP server (works with all MCP-compatible CLIs)
-speech-mcp-echo
-```
 
 ## Configuration
 
