@@ -68,6 +68,11 @@ cloud-openai = [
     "openai>=1.0.0",
 ]
 
+# Cloud services (Groq API) - uses openai SDK with custom base_url
+cloud-groq = [
+    "openai>=1.0.0",
+]
+
 # Cloud services (Google Cloud) - optional, gcloud CLI works without these
 cloud-google = [
     "google-cloud-speech>=2.21.0",
@@ -96,12 +101,12 @@ dev = [
 
 # Recommended: Everything except heavy Kokoro/PyTorch
 recommended = [
-    "speech-mcp-echo[local-stt,local-tts-light,mcp]",
+    "speech-mcp-echo[local-stt,local-tts-light,cloud-groq,mcp]",
 ]
 
 # All optional dependencies (WARNING: includes PyTorch ~2GB)
 all = [
-    "speech-mcp-echo[local-stt,local-tts-kokoro,cloud-openai,cloud-google,mcp,dev]",
+    "speech-mcp-echo[local-stt,local-tts-kokoro,cloud-openai,cloud-google,cloud-groq,mcp,dev]",
 ]
 
 [project.scripts]

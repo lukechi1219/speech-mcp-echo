@@ -6,7 +6,7 @@ Speech MCP Echo is a voice interface for multiple AI CLIs using the MCP (Model C
 
 **Key Features:**
 - **Universal MCP support**: Single server works with all MCP-compatible CLIs
-- Configurable STT (faster-whisper local, OpenAI/Google cloud)
+- Configurable STT (Groq Whisper cloud, faster-whisper local, OpenAI/Google cloud)
 - Configurable TTS (Google Cloud TTS, OpenAI TTS with 6 voices)
 - JARVIS-style response summarizer (English + Chinese)
 
@@ -88,7 +88,8 @@ src/speech_mcp_echo/
 ├── resources/
 │   └── audio/               # Audio cue files (.wav)
 ├── stt_adapters/            # Speech-to-text engines
-│   ├── faster_whisper_adapter.py  # Local (recommended)
+│   ├── groq_whisper_adapter.py    # Cloud (recommended)
+│   ├── faster_whisper_adapter.py  # Local
 │   ├── openai_whisper_adapter.py  # Cloud
 │   └── google_speech_adapter.py   # Cloud
 ├── tts_adapters/            # Text-to-speech engines
@@ -165,9 +166,9 @@ Config file: `~/.config/speech-mcp-echo/config.json`
 ```json
 {
   "stt": {
-    "engine": "faster-whisper",
-    "model": "base",
-    "device": "cpu",
+    "engine": "groq",
+    "model": "whisper-large-v3-turbo",
+    "language": "auto",
     "timeout": 45,  // Audio recording timeout in seconds (default: 45)
     "silence_retry_count": 10,  // Retries on silence (default: 10, ~7.5 min tolerance)
     "retry_prompt_type": "beep"  // Prompt type: "beep", "voice", "silent"
@@ -227,6 +228,21 @@ The system uses silence detection to automatically stop recording when the user 
 2. Every 0.5 seconds, the system checks the audio amplitude
 3. If amplitude stays below 0.003 for 5 consecutive seconds, recording stops
 4. If user speaks again during the 5-second window, the timer resets
+
+## Groq Whisper STT (Recommended)
+
+Groq provides a fast, accurate Whisper API with a generous free tier. The adapter uses the `openai` SDK with Groq's base URL.
+
+**Setup:**
+```bash
+# Get a free API key at https://console.groq.com
+export GROQ_API_KEY="gsk_..."
+```
+
+**Available models:**
+- `whisper-large-v3-turbo` (default, fastest, ~12% WER)
+- `whisper-large-v3` (most accurate)
+- `distil-whisper-large-v3-en` (English-only, fastest)
 
 ## Google Cloud TTS Authentication
 
@@ -301,7 +317,16 @@ tts = OpenAITTS(voice='nova')
 tts.speak('Hello from OpenAI TTS.')
 "
 
-# Test STT only (requires microphone)
+# Test STT - Groq Whisper (requires microphone + GROQ_API_KEY)
+python -c "
+from speech_mcp_echo.stt_adapters.groq_whisper_adapter import GroqWhisperSTT
+stt = GroqWhisperSTT(language='zh')
+print('Listening...')
+text = stt.listen()
+print(f'You said: {text}')
+"
+
+# Test STT - faster-whisper local (requires microphone)
 python -c "
 from speech_mcp_echo.stt_adapters.faster_whisper_adapter import FasterWhisperSTT
 stt = FasterWhisperSTT()

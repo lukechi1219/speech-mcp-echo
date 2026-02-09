@@ -8,7 +8,7 @@ Voice interface for multiple AI CLIs - Claude Code, Gemini CLI, Codex CLI, and M
 
 - **Multi-CLI Support**: Works with Claude Code, Gemini CLI, Codex CLI, and any MCP-compatible tool
 - **Continuous Listening** *(New in v0.2.0)*: Non-blocking background listening with automatic retry on silence
-- **Configurable STT**: Local (faster-whisper) or cloud (OpenAI Whisper, Google Speech)
+- **Configurable STT**: Local (faster-whisper) or cloud (Groq Whisper, OpenAI Whisper, Google Speech)
 - **Configurable TTS**: Local (pyttsx3) or cloud (Google Cloud TTS, OpenAI TTS)
 - **Bilingual Support**: English and Chinese (Traditional/Simplified) text processing
 - **JARVIS Summarizer**: Condenses long responses into concise, entertaining summaries
@@ -78,14 +78,29 @@ command = "speech-mcp-echo"
 
 ## Why These Technology Choices?
 
-### STT: faster-whisper (Recommended)
+### STT: Groq Whisper (Recommended)
 
-We chose **faster-whisper** as the primary STT engine because:
+We chose **Groq Whisper API** as the recommended STT engine because:
+
+- **Most accurate**: Uses whisper-large-v3-turbo model (~12% WER vs ~23% for local base model)
+- **Blazing fast**: 216x real-time speed on Groq's LPU hardware
+- **No local resources**: No model download, no GPU/CPU load
+- **Generous free tier**: Free API with generous rate limits
+- **Easy setup**: Just set `GROQ_API_KEY` environment variable
+- **OpenAI-compatible**: Uses the same `openai` SDK with a different base URL
+
+```bash
+# Set your Groq API key (get one free at https://console.groq.com)
+export GROQ_API_KEY="gsk_..."
+```
+
+### STT: faster-whisper (Local Alternative)
+
+**faster-whisper** is a good alternative for fully offline operation:
 
 - **Lightweight**: ~150MB vs ~1.5GB for OpenAI's original whisper
 - **Fast**: 4x faster than original whisper using CTranslate2 optimization
 - **Offline**: Works completely offline, no API costs
-- **Accurate**: Same accuracy as OpenAI Whisper (it uses the same models)
 - **CPU-friendly**: Runs well on CPU with int8 quantization
 
 ### TTS: Google Cloud TTS (Recommended)
@@ -155,10 +170,9 @@ Configuration is stored at `~/.config/speech-mcp-echo/config.json`:
 ```json
 {
   "stt": {
-    "engine": "faster-whisper",
-    "model": "base",
-    "device": "cpu",
-    "compute_type": "int8",
+    "engine": "groq",
+    "model": "whisper-large-v3-turbo",
+    "language": "auto",
     "timeout": 45,
     "silence_retry_count": 10,
     "retry_prompt_type": "beep"
@@ -187,8 +201,8 @@ Configuration is stored at `~/.config/speech-mcp-echo/config.json`:
 
 ### Supported Languages
 
-| Language | STT (faster-whisper) | TTS (Google Cloud) |
-|----------|---------------------|-------------------|
+| Language | STT (Groq/faster-whisper) | TTS (Google Cloud) |
+|----------|---------------------------|-------------------|
 | English | ✅ | ✅ en-US, en-GB |
 | Chinese (Traditional) | ✅ | ✅ cmn-TW |
 | Chinese (Simplified) | ✅ | ✅ cmn-CN |
@@ -198,6 +212,7 @@ Configuration is stored at `~/.config/speech-mcp-echo/config.json`:
 
 API keys are read from environment variables:
 
+- `GROQ_API_KEY` - For Groq Whisper STT (recommended)
 - `OPENAI_API_KEY` - For OpenAI Whisper STT and TTS
 - `GOOGLE_APPLICATION_CREDENTIALS` - For Google Cloud services (optional if using gcloud CLI)
 - `ANTHROPIC_API_KEY` - For Claude-based summarization
@@ -217,7 +232,8 @@ src/speech_mcp_echo/
 ├── resources/
 │   └── audio/               # Audio cue files (.wav)
 ├── stt_adapters/            # Speech-to-text engines
-│   ├── faster_whisper_adapter.py  # Local (recommended)
+│   ├── groq_whisper_adapter.py    # Cloud (recommended)
+│   ├── faster_whisper_adapter.py  # Local
 │   ├── openai_whisper_adapter.py  # Cloud
 │   └── google_speech_adapter.py   # Cloud
 ├── tts_adapters/            # Text-to-speech engines

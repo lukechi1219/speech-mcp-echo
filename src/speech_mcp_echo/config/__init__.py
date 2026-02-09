@@ -20,8 +20,8 @@ ENV_PREFIX = "SPEECH_MCP_ECHO_"
 # Default configuration
 DEFAULT_CONFIG = {
     "stt": {
-        "engine": "faster-whisper",  # faster-whisper, openai, google
-        "model": "base",
+        "engine": "groq",  # groq, faster-whisper, openai, google
+        "model": "whisper-large-v3-turbo",
         "device": "cpu",
         "compute_type": "int8",
         "language": "auto",  # Language code: auto, en, zh, ja, etc. "auto" detects language
@@ -136,6 +136,7 @@ def get_api_key(service: str) -> Optional[str]:
     env_names = {
         "openai": ["OPENAI_API_KEY"],
         "google": ["GOOGLE_APPLICATION_CREDENTIALS", "GOOGLE_API_KEY"],
+        "groq": ["GROQ_API_KEY"],
         "anthropic": ["ANTHROPIC_API_KEY"],
         "elevenlabs": ["ELEVENLABS_API_KEY"],
     }

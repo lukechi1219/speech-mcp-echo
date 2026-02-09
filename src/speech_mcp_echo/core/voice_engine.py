@@ -77,8 +77,14 @@ class VoiceEngine:
         elif engine_name == "google":
             from speech_mcp_echo.stt_adapters.google_speech_adapter import GoogleSpeechSTT
             return GoogleSpeechSTT()
+        elif engine_name == "groq":
+            from speech_mcp_echo.stt_adapters.groq_whisper_adapter import GroqWhisperSTT
+            return GroqWhisperSTT(
+                model=get_setting("stt", "model", "whisper-large-v3-turbo"),
+                language=get_setting("stt", "language", "auto"),
+            )
         else:
-            raise ValueError(f"Unknown STT engine: {engine_name}")
+            raise ValueError(f"Unknown STT engine: {engine_name}. Available: faster-whisper, openai, google, groq")
 
     def _create_tts_engine(self):
         """Create TTS engine based on configuration."""

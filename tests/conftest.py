@@ -134,6 +134,7 @@ def clean_env(monkeypatch) -> Generator[None, None, None]:
         "GOOGLE_APPLICATION_CREDENTIALS",
         "GOOGLE_API_KEY",
         "ANTHROPIC_API_KEY",
+        "GROQ_API_KEY",
         "ELEVENLABS_API_KEY",
     ]
 
@@ -162,11 +163,13 @@ def mock_api_keys(monkeypatch) -> Generator[Dict[str, str], None, None]:
         "openai": "sk-test-openai-key-12345",
         "google": "/tmp/test-google-credentials.json",
         "anthropic": "sk-ant-test-key-12345",
+        "groq": "gsk-test-groq-key-12345",
         "elevenlabs": "test-elevenlabs-key-12345",
     }
 
     monkeypatch.setenv("OPENAI_API_KEY", api_keys["openai"])
     monkeypatch.setenv("GOOGLE_APPLICATION_CREDENTIALS", api_keys["google"])
+    monkeypatch.setenv("GROQ_API_KEY", api_keys["groq"])
     monkeypatch.setenv("ANTHROPIC_API_KEY", api_keys["anthropic"])
     monkeypatch.setenv("ELEVENLABS_API_KEY", api_keys["elevenlabs"])
 

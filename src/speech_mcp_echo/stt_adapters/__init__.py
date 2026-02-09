@@ -2,7 +2,7 @@
 STT adapters for speech-mcp-echo.
 
 Each adapter implements BaseSTTAdapter to provide speech-to-text capabilities.
-Supported engines: faster-whisper (local), OpenAI Whisper API, Google Speech.
+Supported engines: faster-whisper (local), OpenAI Whisper API, Google Speech, Groq Whisper.
 """
 
 from abc import ABC, abstractmethod
@@ -99,5 +99,10 @@ except ImportError:
 
 try:
     from speech_mcp_echo.stt_adapters.google_speech_adapter import GoogleSpeechSTT
+except ImportError:
+    pass
+
+try:
+    from speech_mcp_echo.stt_adapters.groq_whisper_adapter import GroqWhisperSTT
 except ImportError:
     pass
