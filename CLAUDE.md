@@ -220,7 +220,7 @@ The system uses silence detection to automatically stop recording when the user 
 | Parameter | Value | Description |
 |-----------|-------|-------------|
 | `SILENCE_THRESHOLD` | 0.003 | Amplitude threshold (0-1 range, ~0.3% of max) |
-| `MAX_SILENCE_DURATION` | 5.0 sec | Stop recording after this much continuous silence |
+| `MAX_SILENCE_DURATION` | 3.0 sec | Stop recording after this much continuous silence |
 | `SILENCE_CHECK_INTERVAL` | 0.5 sec | How often to check audio level |
 
 **How it works:**
