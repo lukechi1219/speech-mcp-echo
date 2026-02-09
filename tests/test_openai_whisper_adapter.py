@@ -224,12 +224,8 @@ class TestOpenAIWhisperListen:
         """Listen and transcribe successfully."""
         stt = OpenAIWhisperSTT()
 
-        with patch('speech_mcp_echo.stt_adapters.faster_whisper_adapter.FasterWhisperSTT') as mock_fw:
-            # Mock the temporary adapter for recording
-            mock_temp_adapter = Mock()
-            mock_temp_adapter._record_audio.return_value = "/tmp/test.wav"
-            mock_fw.__new__ = Mock(return_value=mock_temp_adapter)
-
+        # Mock _record_audio to return a fake path
+        with patch.object(stt, '_record_audio', return_value="/tmp/test.wav"):
             with patch.object(stt, 'transcribe') as mock_transcribe:
                 mock_transcribe.return_value = "Listened text"
 
@@ -246,11 +242,7 @@ class TestOpenAIWhisperListen:
         with tempfile.NamedTemporaryFile(delete=False, suffix=".wav") as f:
             temp_path = f.name
 
-        with patch('speech_mcp_echo.stt_adapters.faster_whisper_adapter.FasterWhisperSTT') as mock_fw:
-            mock_temp_adapter = Mock()
-            mock_temp_adapter._record_audio.return_value = temp_path
-            mock_fw.__new__ = Mock(return_value=mock_temp_adapter)
-
+        with patch.object(stt, '_record_audio', return_value=temp_path):
             with patch.object(stt, 'transcribe') as mock_transcribe:
                 mock_transcribe.return_value = "Test"
 
@@ -267,11 +259,7 @@ class TestOpenAIWhisperListen:
         with tempfile.NamedTemporaryFile(delete=False, suffix=".wav") as f:
             temp_path = f.name
 
-        with patch('speech_mcp_echo.stt_adapters.faster_whisper_adapter.FasterWhisperSTT') as mock_fw:
-            mock_temp_adapter = Mock()
-            mock_temp_adapter._record_audio.return_value = temp_path
-            mock_fw.__new__ = Mock(return_value=mock_temp_adapter)
-
+        with patch.object(stt, '_record_audio', return_value=temp_path):
             with patch.object(stt, 'transcribe') as mock_transcribe:
                 mock_transcribe.side_effect = Exception("Transcription error")
 
@@ -293,9 +281,16 @@ class TestOpenAIWhisperAPIErrors:
         with patch('openai.OpenAI') as mock_openai:
             mock_client = MagicMock()
 
-            # Mock auth error
+            # openai SDK v2 requires response and body kwargs
             from openai import AuthenticationError
-            error = AuthenticationError("Invalid API key")
+            mock_response = MagicMock()
+            mock_response.status_code = 401
+            mock_response.headers = {}
+            error = AuthenticationError(
+                message="Invalid API key",
+                response=mock_response,
+                body={"error": {"message": "Invalid API key"}},
+            )
 
             mock_client.audio.transcriptions.create.side_effect = error
             mock_openai.return_value = mock_client
@@ -311,9 +306,16 @@ class TestOpenAIWhisperAPIErrors:
         with patch('openai.OpenAI') as mock_openai:
             mock_client = MagicMock()
 
-            # Mock rate limit error
+            # openai SDK v2 requires response and body kwargs
             from openai import RateLimitError
-            error = RateLimitError("Rate limit exceeded")
+            mock_response = MagicMock()
+            mock_response.status_code = 429
+            mock_response.headers = {}
+            error = RateLimitError(
+                message="Rate limit exceeded",
+                response=mock_response,
+                body={"error": {"message": "Rate limit exceeded"}},
+            )
 
             mock_client.audio.transcriptions.create.side_effect = error
             mock_openai.return_value = mock_client

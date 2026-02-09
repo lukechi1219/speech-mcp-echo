@@ -62,20 +62,18 @@ class TestFasterWhisperTimeout:
         """Test that _record_audio returns None on timeout."""
         stt = FasterWhisperSTT()
 
-        # Mock the recording thread to simulate infinite blocking
-        with patch('speech_mcp_echo.stt_adapters.faster_whisper_adapter.threading.Thread') as mock_thread_class:
-            mock_thread = MagicMock()
-            mock_thread.is_alive.return_value = True  # Still running after timeout
-            mock_thread_class.return_value = mock_thread
+        # Mock the AudioProcessor that _record_audio delegates to
+        mock_audio_processor = MagicMock()
+        mock_audio_processor.record_until_silence.return_value = None
+        stt._audio_processor = mock_audio_processor
 
-            result = stt._record_audio(timeout=1)
+        result = stt._record_audio(timeout=1)
 
-            # Should return None on timeout
-            assert result is None
+        # Should return None on timeout
+        assert result is None
 
-            # Should have started and joined thread
-            mock_thread.start.assert_called_once()
-            mock_thread.join.assert_called_once_with(timeout=1)
+        # Should have called record_until_silence with timeout
+        mock_audio_processor.record_until_silence.assert_called_once_with(timeout=1)
 
     def test_record_audio_completes_before_timeout(self):
         """Test that _record_audio returns path when completing before timeout."""
@@ -88,15 +86,10 @@ class TestFasterWhisperTimeout:
 
     def test_config_default_timeout(self):
         """Test that configuration provides default timeout."""
-        from speech_mcp_echo.config import get_setting, DEFAULT_CONFIG
+        from speech_mcp_echo.config import DEFAULT_CONFIG
 
         # Check the default in DEFAULT_CONFIG constant
         assert DEFAULT_CONFIG["stt"]["timeout"] == 45
-
-        # get_setting should return config value or default
-        timeout = get_setting("stt", "timeout", default=45)
-        assert timeout in [30, 45]  # Could be 30 from previous test or 45 default
-        assert isinstance(timeout, int)
 
     def test_voice_engine_uses_config_timeout(self):
         """Test that VoiceEngine uses configured timeout."""

@@ -175,7 +175,7 @@ class TestGoogleTTSVoiceSelection:
         ("ja-JP", "ja-"),
     ], ids=["chinese", "english", "japanese"])
     @patch("shutil.which", return_value="/usr/bin/gcloud")
-    def test_filter_voices_by_language(self, language, voice_prefix, mock_which):
+    def test_filter_voices_by_language(self, mock_which, language, voice_prefix):
         """Should filter voices by language."""
         tts = GoogleCloudTTS(language=language)
         voices = tts.get_available_voices()

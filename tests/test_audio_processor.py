@@ -137,8 +137,8 @@ def test_get_available_devices_when_no_pyaudio(audio_processor_with_mock):
 
 def test_get_available_devices_handles_exception(audio_processor_with_mock):
     """Test that device enumeration handles exceptions gracefully."""
-    # Make get_device_info raise an exception
-    audio_processor_with_mock.pyaudio.get_device_info_by_index = Mock(
+    # Make get_host_api_info_by_index raise an exception (used by get_available_devices)
+    audio_processor_with_mock.pyaudio.get_host_api_info_by_index = Mock(
         side_effect=Exception("Device error")
     )
 
@@ -479,26 +479,17 @@ def test_stop_listening_handles_exception(audio_processor_with_mock):
 
 def test_audio_frames_collected_during_recording(audio_processor_with_mock, mock_pyaudio_instance):
     """Test that audio frames are collected during recording."""
-    # This test verifies the audio callback stores frames
-    mock_stream = MockAudioStream(
-        format=FORMAT,
-        channels=CHANNELS,
-        rate=RATE,
-        input=True,
-        frames_per_buffer=CHUNK
-    )
-    mock_stream._active = True
+    # Configure the mock to use a tone generator for new streams
+    mock_pyaudio_instance._default_generator = create_tone_generator()
 
-    # Set up tone generator
-    mock_stream.set_input_data_generator(create_tone_generator())
-
-    mock_pyaudio_instance.open = Mock(return_value=mock_stream)
+    # Let MockPyAudio.open() create the stream naturally (with stream_callback support)
+    # The stream will be active and invoke the callback in a background thread
 
     with patch.object(audio_processor_with_mock, 'play_audio_file', return_value=True):
         audio_processor_with_mock.start_listening()
 
         # Wait briefly for callback to be called
-        time.sleep(0.2)
+        time.sleep(0.3)
 
         audio_processor_with_mock.stop_listening()
 
@@ -525,23 +516,14 @@ def test_audio_level_callback_invoked(audio_processor_with_mock, mock_pyaudio_in
         with patch('speech_mcp_echo.config.get_setting', return_value=[]):
             processor = AudioProcessor(on_audio_level=level_callback)
 
-            mock_stream = MockAudioStream(
-                format=FORMAT,
-                channels=CHANNELS,
-                rate=RATE,
-                input=True,
-                frames_per_buffer=CHUNK
-            )
-            mock_stream._active = True
-            mock_stream.set_input_data_generator(create_tone_generator())
-
-            mock_pyaudio_instance.open = Mock(return_value=mock_stream)
+            # Set default generator so new streams produce tone data
+            mock_pyaudio_instance._default_generator = create_tone_generator()
 
             with patch.object(processor, 'play_audio_file', return_value=True):
                 processor.start_listening()
 
                 # Wait for callback to be invoked
-                time.sleep(0.2)
+                time.sleep(0.3)
 
                 processor.stop_listening()
 
@@ -741,16 +723,7 @@ def test_recording_with_different_chunk_sizes(mock_pyaudio_instance):
 
 def test_consecutive_recordings(audio_processor_with_mock, mock_pyaudio_instance):
     """Test multiple consecutive recordings."""
-    mock_stream = MockAudioStream(
-        format=FORMAT,
-        channels=CHANNELS,
-        rate=RATE,
-        input=True,
-        frames_per_buffer=CHUNK
-    )
-    mock_stream._active = True
-
-    mock_pyaudio_instance.open = Mock(return_value=mock_stream)
+    # Let MockPyAudio.open() create fresh streams each time (with callback support)
 
     with patch.object(audio_processor_with_mock, 'play_audio_file', return_value=True):
         # First recording
@@ -795,21 +768,11 @@ def test_recording_interruption(audio_processor_with_mock, mock_pyaudio_instance
 
 def test_recording_with_tone_pattern(audio_processor_with_mock, mock_pyaudio_instance):
     """Test recording with generated tone pattern."""
-    mock_stream = MockAudioStream(
-        format=FORMAT,
-        channels=CHANNELS,
-        rate=RATE,
-        input=True,
-        frames_per_buffer=CHUNK
-    )
-    mock_stream._active = True
-    mock_stream.set_input_data_generator(create_tone_generator(frequency=440.0))
-
-    mock_pyaudio_instance.open = Mock(return_value=mock_stream)
+    mock_pyaudio_instance._default_generator = create_tone_generator(frequency=440.0)
 
     with patch.object(audio_processor_with_mock, 'play_audio_file', return_value=True):
         audio_processor_with_mock.start_listening()
-        time.sleep(0.2)
+        time.sleep(0.3)
         audio_processor_with_mock.stop_listening()
 
     # Should have collected frames
@@ -818,21 +781,11 @@ def test_recording_with_tone_pattern(audio_processor_with_mock, mock_pyaudio_ins
 
 def test_recording_with_noise_pattern(audio_processor_with_mock, mock_pyaudio_instance):
     """Test recording with white noise pattern."""
-    mock_stream = MockAudioStream(
-        format=FORMAT,
-        channels=CHANNELS,
-        rate=RATE,
-        input=True,
-        frames_per_buffer=CHUNK
-    )
-    mock_stream._active = True
-    mock_stream.set_input_data_generator(create_noise_generator(amplitude=0.5))
-
-    mock_pyaudio_instance.open = Mock(return_value=mock_stream)
+    mock_pyaudio_instance._default_generator = create_noise_generator(amplitude=0.5)
 
     with patch.object(audio_processor_with_mock, 'play_audio_file', return_value=True):
         audio_processor_with_mock.start_listening()
-        time.sleep(0.2)
+        time.sleep(0.3)
         audio_processor_with_mock.stop_listening()
 
     # Should have collected frames

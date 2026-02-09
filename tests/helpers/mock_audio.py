@@ -30,6 +30,7 @@ class MockAudioStream:
         frames_per_buffer: int = 1024,
         input_device_index: Optional[int] = None,
         output_device_index: Optional[int] = None,
+        stream_callback: Optional[Callable] = None,
     ):
         """
         Initialize mock audio stream.
@@ -43,6 +44,7 @@ class MockAudioStream:
             frames_per_buffer: Number of frames per buffer
             input_device_index: Input device index
             output_device_index: Output device index
+            stream_callback: Optional callback for non-blocking mode
         """
         self.format = format
         self.channels = channels
@@ -52,6 +54,8 @@ class MockAudioStream:
         self.frames_per_buffer = frames_per_buffer
         self.input_device_index = input_device_index
         self.output_device_index = output_device_index
+        self._stream_callback = stream_callback
+        self._callback_thread: Optional[threading.Thread] = None
 
         self._active = False
         self._lock = threading.Lock()
@@ -61,6 +65,12 @@ class MockAudioStream:
 
         # Default: generate silence
         self.set_input_data_generator(self._generate_silence)
+
+        # In real PyAudio, streams are active immediately after open()
+        # (both callback-mode and blocking-mode)
+        self._active = True
+        if self._stream_callback:
+            self._start_callback_thread()
 
     def _generate_silence(self, num_frames: int) -> bytes:
         """Generate silent audio data."""
@@ -119,10 +129,29 @@ class MockAudioStream:
 
             self._write_count += 1
 
+    def _start_callback_thread(self) -> None:
+        """Start background thread that invokes the stream callback."""
+        if self._callback_thread and self._callback_thread.is_alive():
+            return
+
+        def _run_callback():
+            while self._active and self._stream_callback:
+                try:
+                    data = self._data_generator(self.frames_per_buffer) if self._data_generator else self._generate_silence(self.frames_per_buffer)
+                    self._stream_callback(data, self.frames_per_buffer, {}, 0)
+                except Exception:
+                    pass
+                time.sleep(self.frames_per_buffer / max(self.rate, 1))
+
+        self._callback_thread = threading.Thread(target=_run_callback, daemon=True)
+        self._callback_thread.start()
+
     def start_stream(self) -> None:
         """Start the audio stream."""
         with self._lock:
             self._active = True
+            if self._stream_callback:
+                self._start_callback_thread()
 
     def stop_stream(self) -> None:
         """Stop the audio stream."""
@@ -166,6 +195,7 @@ class MockPyAudio:
         self._lock = threading.Lock()
         self._streams: List[MockAudioStream] = []
         self._terminated = False
+        self._default_generator: Optional[Callable] = None
 
         # Mock device list
         self._devices = [
@@ -266,6 +296,14 @@ class MockPyAudio:
             return 4  # 32-bit = 4 bytes
         return 2  # Default to 16-bit
 
+    def get_format_from_width(self, width: int, unsigned: bool = True) -> int:
+        """Get format constant from sample width in bytes."""
+        if width == 2:
+            return self.paInt16
+        elif width == 4:
+            return self.paFloat32
+        return self.paInt16  # Default
+
     def open(
         self,
         format: int,
@@ -276,6 +314,7 @@ class MockPyAudio:
         frames_per_buffer: int = 1024,
         input_device_index: Optional[int] = None,
         output_device_index: Optional[int] = None,
+        stream_callback: Optional[Callable] = None,
         **kwargs,
     ) -> MockAudioStream:
         """
@@ -290,6 +329,7 @@ class MockPyAudio:
             frames_per_buffer: Buffer size
             input_device_index: Input device index
             output_device_index: Output device index
+            stream_callback: Optional callback for non-blocking mode
 
         Returns:
             MockAudioStream instance
@@ -307,7 +347,12 @@ class MockPyAudio:
                 frames_per_buffer=frames_per_buffer,
                 input_device_index=input_device_index,
                 output_device_index=output_device_index,
+                stream_callback=stream_callback,
             )
+
+            # Apply default data generator if set
+            if self._default_generator:
+                stream.set_input_data_generator(self._default_generator)
 
             self._streams.append(stream)
             return stream

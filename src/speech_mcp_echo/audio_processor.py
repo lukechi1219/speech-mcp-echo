@@ -559,18 +559,22 @@ class AudioProcessor:
     def cleanup(self) -> None:
         """
         Clean up resources used by the audio processor.
-        
+
         This should be called when the audio processor is no longer needed.
         """
         try:
             if self.stream:
-                self.stream.stop_stream()
-                self.stream.close()
+                try:
+                    self.stream.stop_stream()
+                    self.stream.close()
+                except Exception:
+                    pass
                 self.stream = None
-                
+
             if self.pyaudio:
                 self.pyaudio.terminate()
                 self.pyaudio = None
-                
+
         except Exception:
-            pass
+            self.stream = None
+            self.pyaudio = None

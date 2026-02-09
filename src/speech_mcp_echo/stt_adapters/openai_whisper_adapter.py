@@ -28,6 +28,7 @@ class OpenAIWhisperSTT(BaseSTTAdapter):
     ):
         super().__init__(model=model, language=language)
 
+        self._audio_processor = None
         self.api_key = get_api_key("openai")
         self.is_initialized = self.api_key is not None
 
@@ -59,15 +60,13 @@ class OpenAIWhisperSTT(BaseSTTAdapter):
             logger.error(f"OpenAI transcription failed: {e}")
             raise
 
-    def listen(self) -> str:
+    def listen(self, timeout: Optional[int] = None) -> str:
         """Listen and transcribe using OpenAI Whisper."""
-        # Record audio first
-        from speech_mcp_echo.stt_adapters.faster_whisper_adapter import FasterWhisperSTT
+        audio_path = self._record_audio(timeout=timeout)
 
-        # Borrow recording logic from faster-whisper adapter
-        temp_adapter = FasterWhisperSTT.__new__(FasterWhisperSTT)
-        temp_adapter.is_initialized = True
-        audio_path = temp_adapter._record_audio()
+        if not audio_path:
+            logger.warning("Audio recording timeout - no transcription available")
+            return ""
 
         try:
             return self.transcribe(audio_path)
@@ -77,6 +76,13 @@ class OpenAIWhisperSTT(BaseSTTAdapter):
                 os.unlink(audio_path)
             except Exception:
                 pass
+
+    def _record_audio(self, timeout: Optional[int] = None) -> Optional[str]:
+        """Record audio from microphone until silence detected."""
+        if self._audio_processor is None:
+            from speech_mcp_echo.audio_processor import AudioProcessor
+            self._audio_processor = AudioProcessor()
+        return self._audio_processor.record_until_silence(timeout=timeout)
 
     def get_available_models(self) -> list[str]:
         """Get available OpenAI Whisper models."""
